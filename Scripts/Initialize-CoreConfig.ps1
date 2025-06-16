@@ -27,32 +27,6 @@ if (-not (Get-Variable -Name Included_Initialize-CoreConfig_Block -Scope Global 
 #endregion	end of guard
 
 
-#----------------------------------------------------------
-#region     Parse Arguments
-$logLevelArg = $null
-$execArg = $false
-$helpArg = $false
-$remainingArgs = @()
-
-for ($i = 0; $i -lt $Global:CliArgs.Count; $i++) {
-    Write-Host "args[$i] = $($Global:CliArgs[$i])"
-    switch -regex ($Global:CliArgs[$i]) {
-        "^-LogLevel$" {
-            if ($i + 1 -lt $Global:CliArgs.Count) {
-                $logLevelArg = $Global:CliArgs[$i + 1]
-                $i++
-            }
-        }
-        "^-Debug$" { $DebugPreference = "Continue" }
-        "^-Exec$" {  $execArg = $true }
-        "^-Help$" {  $helpArg = $true }
-        default   {  $remainingArgs += $Global:CliArgs[$i] }
-    }
-}
-#Write-Host "LogLevelArg = $logLevelArg  : execArg = $execArg   :   helpArg = $helpArg   : remainingArgs = " (Format-ToString($remainingArgs))
-#endregion
-
-
 #---------------------------------------------------------
 #region     Dot-source DevUtils
 $devUtilsPath = Join-Path $PSScriptRoot ".\DevUtils"
@@ -65,6 +39,36 @@ if (Test-Path $devUtilsPath) {
 } else {
     Write-Warning "DevUtils path not found: $devUtilsPath"
 }
+#endregion
+
+
+#----------------------------------------------------------
+#region     Parse Arguments
+$logLevelArg = $null
+$execArg = $false
+$helpArg = $false
+$remainingArgs = @()
+
+Write-Host ("CliArgs = " + (Format-ToString($Global:CliArgs)))
+
+for ($i = 0; $i -lt $Global:CliArgs.Count; $i++) {
+    Write-Host "args[$i] = $($Global:CliArgs[$i])"
+    if ($Global:CliArgs[$i] -match "-LogLevel") {
+            if ($i + 1 -lt $Global:CliArgs.Count) {
+                $logLevelArg = $Global:CliArgs[$i + 1]
+                $i++
+            }
+    } elseif ($Global:CliArgs[$i] -match "-Debug") {
+        $DebugPreference = "Continue"
+    } elseif ($Global:CliArgs[$i] -match "-Exec") {
+        $execArg = $true
+    } elseif ($Global:CliArgs[$i] -match "-Help") {
+        $helpArg = $true
+    } else {
+        $remainingArgs += $Global:CliArgs[$i]
+    }
+}
+Write-Host "LogLevelArg = $logLevelArg  : execArg = $execArg   :   helpArg = $helpArg   : remainingArgs = " (Format-ToString($remainingArgs))
 #endregion
 
 

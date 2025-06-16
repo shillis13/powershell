@@ -1,4 +1,4 @@
-# ===========================================================================================
+===========================================================================================
 #region       Ensure PSRoot and Dot Source Core Globals
 # ===========================================================================================
 
@@ -19,8 +19,53 @@ if (-not $Global:CliArgs) {
 #endregion
 # ===========================================================================================
 
+# ======================================================================
+#region           Function: Get-SPFile
+# ======================================================================
+<#
+.SYNOPSIS
+    Downloads a file from SharePoint using Microsoft Graph API.
 
-# Main function to get the SharePoint file
+.DESCRIPTION
+    This function downloads a file from SharePoint using the Microsoft Graph API.
+    It supports authentication via device code flow and can infer the output filename
+    from the URL if not specified. It also supports looped downloads with optional overlap.
+
+.PARAMETER Url
+    The URL of the SharePoint file to download.
+
+.PARAMETER UserId
+    The User ID for authentication.
+
+.PARAMETER OutFile
+    The output file path where the downloaded file will be saved.
+
+.PARAMETER LoopSeconds
+    The interval in seconds for looped downloads. Default is 0 (no loop).
+
+.PARAMETER AllowOverlap
+    If specified, allows overlapping downloads in looped mode.
+
+.PARAMETER File
+    An optional file parameter.
+
+.PARAMETER Help
+    Displays the help message.
+
+.PARAMETER ShowHelp
+    Displays the help message.
+
+.PARAMETER HelpAlias
+    Alias for the Help parameter.
+
+.EXAMPLE
+    Get-SPFile -Url "https://yourcompany.sharepoint.com/sites/ProjectX/Shared%20Documents/folder/Report.xlsx" -UserId "you@yourcompany.com" -OutFile "C:\Downloads\Report.xlsx"
+
+.NOTES
+    - If -OutFile is omitted, the filename will be extracted from the URL.
+    - No app registration or ClientId needed.
+    - Login is handled via secure Microsoft device login prompt.
+#>
 function Get-SPFile {
     param (
         [string]$Url,
@@ -122,7 +167,6 @@ function Get-SPFile {
         return
     }
 
-
     # Call the function to download the file
     Get-SharePointFile -AccessToken $AccessToken -SiteName $SiteName -FilePath $FilePath -OutFile $OutFile
 
@@ -133,10 +177,30 @@ function Get-SPFile {
         Get-SharePointFile -AccessToken $AccessToken -SiteName $SiteName -FilePath $FilePath -OutFile $OutFile
     }
 }
+#endregion
+# ======================================================================
 
-# ============================
-# Get TenantId from Domain
-# ============================
+
+# ======================================================================
+#region           Function: Get-TenantId
+# ======================================================================
+<#
+.SYNOPSIS
+    Retrieves the Tenant ID from the domain name.
+
+.DESCRIPTION
+    This function retrieves the Tenant ID from the domain name by querying the
+    Microsoft online login endpoint.
+
+.PARAMETER DomainName
+    The domain name to query for the Tenant ID.
+
+.EXAMPLE
+    $tenantId = Get-TenantId -DomainName "yourcompany.onmicrosoft.com"
+
+.NOTES
+    - This function uses the Microsoft online login endpoint to fetch the Tenant ID.
+#>
 function Get-TenantId {
     param ([string]$DomainName)
 
@@ -151,10 +215,39 @@ function Get-TenantId {
     }
     return $null
 }
+#endregion
+# ======================================================================
 
-# ============================
-# Download File
-# ============================
+
+# ======================================================================
+#region           Function: Get-SharePointFile
+# ======================================================================
+<#
+.SYNOPSIS
+    Downloads a file from SharePoint using the Microsoft Graph API.
+
+.DESCRIPTION
+    This function downloads a file from SharePoint using the Microsoft Graph API.
+    It requires an access token, site name, file path, and output file path.
+
+.PARAMETER AccessToken
+    The access token for authentication.
+
+.PARAMETER SiteName
+    The name of the SharePoint site.
+
+.PARAMETER FilePath
+    The path to the file within the SharePoint site.
+
+.PARAMETER OutFile
+    The output file path where the downloaded file will be saved.
+
+.EXAMPLE
+    Get-SharePointFile -AccessToken $accessToken -SiteName "ProjectX" -FilePath "Shared Documents/folder/Report.xlsx" -OutFile "C:\Downloads\Report.xlsx"
+
+.NOTES
+    - This function uses the Microsoft Graph API to download the file.
+#>
 function Get-SharePointFile {
     param (
         [string]$AccessToken,
@@ -206,7 +299,45 @@ function Get-SharePointFile {
     $stopwatch.Stop()
     Log -Info "Download completed in $($stopwatch.Elapsed.TotalSeconds) seconds."
 }
+#endregion
+# ======================================================================
 
+
+# ======================================================================
+#region           Function: Start-DownloadLoop
+# ======================================================================
+<#
+.SYNOPSIS
+    Starts a loop to download a SharePoint file at regular intervals.
+
+.DESCRIPTION
+    This function starts a loop to download a SharePoint file at regular intervals.
+    It supports overlapping downloads if specified.
+
+.PARAMETER AccessToken
+    The access token for authentication.
+
+.PARAMETER SiteName
+    The name of the SharePoint site.
+
+.PARAMETER FilePath
+    The path to the file within the SharePoint site.
+
+.PARAMETER OutFile
+    The output file path where the downloaded file will be saved.
+
+.PARAMETER IntervalSeconds
+    The interval in seconds for looped downloads.
+
+.PARAMETER AllowOverlap
+    If specified, allows overlapping downloads in looped mode.
+
+.EXAMPLE
+    Start-DownloadLoop -AccessToken $accessToken -SiteName "ProjectX" -FilePath "Shared Documents/folder/Report.xlsx" -OutFile "C:\Downloads\Report.xlsx" -IntervalSeconds 60 -AllowOverlap
+
+.NOTES
+    - This function uses the Microsoft Graph API to download the file.
+#>
 function Start-DownloadLoop {
     param (
         [string]$AccessToken,
@@ -239,11 +370,27 @@ function Start-DownloadLoop {
         Start-Sleep -Seconds $IntervalSeconds
     }
 }
+#endregion
+# ======================================================================
 
 
-# ==========================================================================================
-#region  Function: Show-Help
-# ==========================================================================================
+# ======================================================================
+#region           Function: Show-Help
+# ======================================================================
+<#
+.SYNOPSIS
+    Displays the help message for the script.
+
+.DESCRIPTION
+    This function displays the help message for the script, including usage examples
+    and notes about the parameters.
+
+.EXAMPLE
+    Show-Help
+
+.NOTES
+    - This function provides detailed usage information for the script.
+#>
 function Show-Help {
     Write-Host @"
 Downloads a SharePoint file using Microsoft Graph API with your Microsoft 365 login.

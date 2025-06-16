@@ -19,12 +19,8 @@ if (-not $Global:CliArgs) {
 #endregion
 # ===========================================================================================
 
-
 Import-Module "$Global:PSRoot\Modules\VirtualFolderFileUtils\VirtualFolderFileUtils.psd1" -Force
 
-# . "$env:PowerShellScripts\DevUtils\DryRun.ps1"
-# . "$env:PowerShellScripts\DevUtils\Logging.ps1"
-# . "$env:PowerShellScripts\DevUtils\Format-Utils.ps1"
 . "$Global:PSRoot\Scripts\FileUtils\Zip-Contents.ps1"
 . "$Global:PSRoot\Scripts\OutlookUtils\Outlook.Interface.ps1"
 
@@ -324,7 +320,7 @@ elseif ($MyInvocation.InvocationName -eq '.') {
 }
 elseif ($MyInvocation.MyCommand.Path -eq $PSCommandPath) {
     # Script is being executed directly
-    Log -Dbg "Copy-CleanZipDir (Format-Hashtable($remainingArgs))"
+    Log -Info "Copy-CleanZipDir ($remainingArgs))"
     Copy-CleanZipDir @remainingArgs
 }
 else {

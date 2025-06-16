@@ -60,7 +60,7 @@ Set-Alias -Name renExt -Value Rename-FileExtension
 Set-Alias -Name setDir -Value Set-Dir 
 set-Alias -Name psZip -Value Compress-Contents
 set-Alias -Name psUnzip -Value Expand-Content
-set-Alias -Name copyDir -Value Copy-CleanZipDir
+set-Alias -Name copyDir -Value $Global:PSRoot/Scripts/FileUtils/Export-DirUtils.ps1
 
 #endregion
 
