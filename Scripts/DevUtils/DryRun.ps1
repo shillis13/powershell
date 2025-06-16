@@ -1,16 +1,4 @@
 <# ##########################################################################
-.SYNOPSIS
-    Dry-run control module for safe globaling execution.
-
-.DEglobalION
-    Provides a centralized, reusable way to manage dry-run behavior in globals.
-    Default state is DryRun = $true, enforcing safe no-operation mode until explicitly overridden.
-
-.NOTES
-
-#############################################################################
-#>
-if ( -not ('ItemActionType' -as [type])) {
  enum ItemActionType {
         UnknownAction
         NoAction
@@ -53,8 +41,26 @@ if (-not (Get-Variable -Name Included_DryRun_Block -Scope Global -ErrorAction Si
 
 .EXAMPLE
     Set-DryRun -Enabled $true
+# ==================================================
+#region               Function: Set-DryRun
+<#
+.SYNOPSIS
+    Sets the dry-run mode globally.
+
+.PARAMETER Enabled
+    Enable or disable dry-run mode.
+
+.OUTPUTS
+    None
+
+.EXAMPLE
+    Set-DryRun -Enabled $true
+
+.NOTES
+    Maintains global:pDryRun state.
 #>
 function Set-DryRun {
+    [CmdletBinding()]
     param (
         [bool]$Enabled
     )
@@ -62,59 +68,67 @@ function Set-DryRun {
     $global:pDryRun = $global:pDryRun
 }
 #endregion
+# ==================================================
 #=======================================================================================
 
 
-#=======================================================================================
-#region     Function: Get current dry-run state
+# ==================================================
+#region               Function: Get-DryRun
 <#
 .SYNOPSIS
     Gets the current dry-run state.
 
-.RETURNS
-    A boolean indicating whether dry-run mode is enabled or disabled.
+.OUTPUTS
+    [bool]
 
 .EXAMPLE
-    $dryRunState = Get-DryRun
+    $state = Get-DryRun
+
+.NOTES
+    Returns the global:pDryRun setting.
 #>
 function Get-DryRun {
+    [CmdletBinding()]
+    param()
     return $global:pDryRun
 }
 #endregion
-#=======================================================================================
+# ==================================================
 
 
-
-#=======================================================================================
-#region     Function: Invoke-WithDryRunOverride
+# ==================================================
+#region               Function: Invoke-WithDryRunOverride
 <#
 .SYNOPSIS
-    Invokes a global block temporarily overriding the dry-run mode.
+    Invokes a script block temporarily overriding dry-run mode.
 
 .PARAMETER TemporaryState
-    A boolean value indicating the temporary state of dry-run mode.
+    Temporary dry-run state to use.
 
-.PARAMETER globalBlock
-    A script block to execute while the dry-run mode is temporarily overridden.
+.PARAMETER GlobalBlock
+    Script block to execute.
+
+.OUTPUTS
+    None
 
 .EXAMPLE
-    Invoke-WithDryRunOverride -TemporaryState $false -globalBlock { <script> }
+    Invoke-WithDryRunOverride -TemporaryState $false -GlobalBlock { Do-Stuff }
 #>
 function Invoke-WithDryRunOverride {
     [CmdletBinding()]
     param (
         [bool]$TemporaryState,
-        [globalblock]$globalBlock
+        [scriptblock]$GlobalBlock
     )
-
     $originalState = $global:pDryRun
     try {
         $global:pDryRun = $TemporaryState
-        & $globalBlock
+        & $GlobalBlock
     } finally {
         $global:pDryRun = $originalState
     }
 }
 #endregion
+# ==================================================
 #=======================================================================================
 
