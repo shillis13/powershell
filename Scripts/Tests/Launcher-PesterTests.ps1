@@ -28,7 +28,16 @@ $test5 = "$Global:PSRoot\Scripts\Tests\Test-NewItemNameWithDate.Tests.ps1"
 $test6 = "$Global:PSRoot\Scripts\Tests\Test-CompareEquals.Tests.ps1"
 $test7 = "$Global:PSRoot\Scripts\Tests\Test-CallStack.Tests.ps1"
 $test8 = "$Global:PSRoot\Scripts\Tests\Test-GetOutlookItemType.Tests.ps1"
-$test9 = "$Global:PSRoot\Scripts\Tests\TEst-DateTimeUtils.Tests.ps1"
+$test9 = "$Global:PSRoot\Scripts\Tests\Test-DateTimeUtils.Tests.ps1"
+$test10 = "$Global:PSRoot\Scripts\Tests\Test-Select-Files.Tests.ps1"
+$test11 = "$Global:PSRoot\Scripts\Tests\Test-Get-PaddedText.Tests.ps1"
+$test12 = "$Global:PSRoot\Scripts\Tests\Test-Move-Files.Tests.ps1"
+$test13 = "$Global:PSRoot\Scripts\Tests\Test-Rename-Files.Tests.ps1"
+$test14 = "$Global:PSRoot\Scripts\Tests\Test-Rename-FileExtension.Tests.ps1"
+$test15 = "$Global:PSRoot\Scripts\Tests\Test-SetDir-BaseDirsUtils.Tests.ps1"
+$test16 = "$Global:PSRoot\Scripts\Tests\Test-SetDir-KeywordDirsUtils.Tests.ps1"
+$test17 = "$Global:PSRoot\Scripts\Tests\Test-Set-Dir.Tests.ps1"
+$test18 = "$Global:PSRoot\Scripts\Tests\Test-Register-GoDirCompleter.Tests.ps1"
 
 # Optional breakpoints
 # Set-PSBreakpoint -Script "$PSScriptRoot\..\DevUtils\Compare-Utils.ps1" -Line 25
@@ -37,7 +46,10 @@ $test9 = "$Global:PSRoot\Scripts\Tests\TEst-DateTimeUtils.Tests.ps1"
 #Set-PSBreakpoint -Command '&'
 
 $conf = [PesterConfiguration]::Default
-$conf.Run.Path = @($test1, $test2, $test3, $test4, $test5, $test6, $test7, $test8, $test9)
+$conf.Run.Path = @(
+    $test1, $test2, $test3, $test4, $test5, $test6, $test7, $test8, $test9,
+    $test10, $test11, $test12, $test13, $test14, $test15, $test16, $test17, $test18
+)
 #$conf.Run.Path = @($test1, $test2, $test3, $test4, $test5, $test6)
 #$conf.Run.Path = @($test4, $test6)
 #$conf.Run.Path = @($test1)
