@@ -17,30 +17,45 @@ if (-not $Global:PSRoot) {
 . "$Global:PSRoot\Scripts\Initialize-CoreConfig.ps1"
 
 #endregion
+# ==================================================
 # ===========================================================================================
 
 
+
+# ==================================================
+#region               Function: Backup-Files
 <#
 .SYNOPSIS
     Archives files based on various options.
 
 .DESCRIPTION
-    This script uses SelectFiles.ps1 to find files in the specified source directory, orders them by date-time, and returns the files in ascending order except for the last file (which would be the newest file). It then moves those files to the specified archive directory.
+    This script uses SelectFiles.ps1 to locate files in the source directory. It
+    orders them by date, skipping the newest file, and moves the remainder to the
+    archive directory.
 
 .PARAMETER SrcPath
     The source directory to search for files.
 
 .PARAMETER DestPath
-    (Optional) The archive directory to move files to. Defaults to $SrcPath\Archive.
+    (Optional) Destination archive directory. Defaults to $SrcPath\Archive.
 
-.PARAMETER DontUseDateInFilename
-    (Optional) Switch to not use date in the filename for ordering. Default is false.
+.PARAMETER UseDateInFilename
+    (Optional) Use dates from the filename when ordering.
 
 .PARAMETER KeepNVersions
-    (Optional) The number of most recent files to keep in the source directory. Default is 1.
+    (Optional) Number of most recent files to keep. Defaults to 1.
+
+.PARAMETER Exec
+    Switch to execute moves; overrides dry run.
+
+.OUTPUTS
+    None
 
 .EXAMPLE
-    .\ArchiveFiles.ps1 -SrcPath "C:\Files" -DestPath "C:\Archive" -DontUseDateInFilename -KeepNVersions 1
+    Backup-Files -SrcPath "C:\Files" -DestPath "C:\Archive" -UseDateInFilename -KeepNVersions 1
+
+.NOTES
+    Relies on Select-Files.ps1 and Logging utilities.
 #>
 
 # Import modules
@@ -49,9 +64,8 @@ if (-not $Global:PSRoot) {
 . "$ENV:PowerShellScripts\DevUtils\Format-Utils.ps1"
 . "$ENV:PowerShellScripts\FileUtils\Select-Files.ps1"
 
-#==================================================================================
-#region     Function: Backup-Files
 function Backup-Files {
+    [CmdletBinding()]
     param (
         [Parameter(Mandatory = $true)]
         [string]$SrcPath,
@@ -121,7 +135,7 @@ function Backup-Files {
     }
 }
 #endregion
-#==================================================================================
+# ==================================================
 
 
 # ==========================================================================================
