@@ -115,29 +115,6 @@ function Rename-FileExtension {
 #endRegion
 
 
-# # Main script block to allow the script to be executed directly
-# if ($MyInvocation.MyCommand.Path -eq $PSCommandPath) {
-#     param (
-#         [string]$OldExt,
-#         [string]$NewExt,
-#         [switch]$Recurse,
-#         [switch]$Exec,
-#         [switch]$Help
-#     )
-
-#     if ($Exec) {
-#         Set-DryRun $false
-#     }
-    
-#     Rename-FileExtension -OldExt $OldExt -NewExt $NewExt -Recurse:$Recurse -Help:$Help
-
-#     Log -ALways "Press any key to exit..."
-#     [void][System.Console]::ReadKey($true)
-# }
-#     Log -Always "InvocName = $($MyInvocation.InvocationName)"
-#     Log -Always "CmdPath = $PSCommandPath"
-#     Log -Always "Press any key to exit..."
-
 # ==========================================================================================
 #region      Execution Guard / Main Entrypoint
 # ==========================================================================================

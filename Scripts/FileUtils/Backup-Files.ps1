@@ -16,10 +16,12 @@ if (-not $Global:PSRoot) {
 
 . "$Global:PSRoot\Scripts\Initialize-CoreConfig.ps1"
 
+
+# Import modules
+. "$ENV:PowerShellScripts\FileUtils\Select-Files.ps1"
+
 #endregion
 # ==================================================
-# ===========================================================================================
-
 
 
 # ==================================================
@@ -57,13 +59,6 @@ if (-not $Global:PSRoot) {
 .NOTES
     Relies on Select-Files.ps1 and Logging utilities.
 #>
-
-# Import modules
-. "$ENV:PowerShellScripts\DevUtils\Logging.ps1"
-. "$ENV:PowerShellScripts\DevUtils\DryRun.ps1"
-. "$ENV:PowerShellScripts\DevUtils\Format-Utils.ps1"
-. "$ENV:PowerShellScripts\FileUtils\Select-Files.ps1"
-
 function Backup-Files {
     [CmdletBinding()]
     param (

@@ -16,13 +16,13 @@ if (-not $Global:CliArgs) {
 
 . "$Global:PSRoot\Scripts\Initialize-CoreConfig.ps1"
 
-#endregion
-# ===========================================================================================
-
 Import-Module "$Global:PSRoot\Modules\VirtualFolderFileUtils\VirtualFolderFileUtils.psd1" -Force
 
 . "$Global:PSRoot\Scripts\FileUtils\Zip-Contents.ps1"
 . "$Global:PSRoot\Scripts\OutlookUtils\Outlook.Interface.ps1"
+
+#endregion
+# ===========================================================================================
 
 #___________________________________________________________________________________
 #region 	*** PowerShell Block Guard to prevent a section of code from being read multiple times 
@@ -304,7 +304,6 @@ function Copy-CleanZipDir {
 #======================================================================================
 # "Main" block - runs only if executed directly
 #======================================================================================
-#==================================================================================
 # Detect if the script is being run directly or invoked
 if ($MyInvocation.InvocationName -eq $MyInvocation.MyCommand.Name) {
     if ($PSBoundParameters.ContainsKey("Help") -or $PSBoundParameters.ContainsKey("?")) {

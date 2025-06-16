@@ -15,11 +15,12 @@ if (-not $Global:CliArgs) {
 
 . "$Global:PSRoot\Scripts\Initialize-CoreConfig.ps1"
 
+# Import modules
+. "$Global:PSRoot\Scripts\FileUtils\Select-Files.ps1" # TODO: integrate
+
 #endregion
 # ===========================================================
 
-# Import modules
-. "$Global:PSRoot\Scripts\FileUtils\Select-Files.ps1" # TODO: integrate
 
 #-------------------------------------------------------
 #region     Show Help Functions

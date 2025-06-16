@@ -25,8 +25,6 @@ if (-not $Global:DefPw)         { Set-Variable -Name DefPw -Scope Script -Value 
 # Expand-Files -ZipFilePath $zipPath -TargetDir "C:\Restored"
 
 
-#==================================================================================
-#region
 #========================================
 #region Compress-Contents
 <#
