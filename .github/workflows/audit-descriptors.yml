@@ -1,0 +1,36 @@
+name: Audit PowerShell Function Descriptors
+
+on:
+  push:
+    paths:
+      - '**.ps1'
+      - '**.psm1'
+  pull_request:
+    paths:
+      - '**.ps1'
+      - '**.psm1'
+  workflow_dispatch:
+
+jobs:
+  audit-descriptors:
+    name: Run Descriptor Audit
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up PowerShell
+        uses: actions/setup-powershell@v1
+
+      - name: Run Descriptor Audit Script
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          .\Audit-FunctionDescriptors.ps1 -OutFile audit_ci_results.json
+
+      - name: Upload audit results
+        uses: actions/upload-artifact@v3
+        with:
+          name: descriptor-audit-results
+          path: audit_ci_results.json
