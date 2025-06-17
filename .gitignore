@@ -134,6 +134,7 @@ tmp/
 *.zip
 *.7z
 *.rar
+*\ -\ Copy.*
 
 # AI tools / Abstra / Cursor
 .abstra/
