@@ -16,21 +16,32 @@ $Global:CloneType_Shallow = "Shallow"
 $Global:CloneType_Self = "Self"
 
 
+# ==================================================
+#region               Function: Format-Path
 <#
 .SYNOPSIS
-    Normalizes a path by trimming trailing backslashes. Optionally sanitizes invalid characters in the leaf.
+Normalizes a path by trimming trailing backslashes and optionally sanitizing invalid characters.
+
+.DESCRIPTION
+Removes trailing slashes from a path and, when -Sanitize is specified, replaces invalid characters in the leaf with underscores.
 
 .PARAMETER path
-    The path to normalize.
+Path to normalize.
 
 .PARAMETER Sanitize
-    Optional switch to replace invalid file name characters in the leaf with underscores.
+Switch to sanitize invalid file name characters.
+
+.OUTPUTS
+string
 
 .EXAMPLE
-    Format-Path 'C:\Temp\Folder\'         # → 'C:\Temp\Folder'
-    Format-Path 'C:\Invalid:Name' -Sanitize  # → 'C:\Invalid_Name'
+Format-Path 'C:\Temp\Folder\'
+
+.NOTES
+N/A
 #>
 function Format-Path {
+    [CmdletBinding()]
     param(
         [string]$path,
         [switch]$Sanitize
