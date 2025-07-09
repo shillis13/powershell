@@ -4,27 +4,41 @@
 
 # Ensure DevUtils is sourced before running these tests.
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
-. "$here\..\DevUtils\CallStack.ps1"
+. "$here\..\DevUtils\Get-CallStack.ps1"
 
-if (-not $Global:PSRoot) {
-    $Global:PSRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
-    Write-Host "Set Global:PSRoot = $Global:PSRoot"
+function InitializeCore {
+    if (-not $Script:PSRoot) {
+        $Script:PSRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
+        Write-Host "Set Script:PSRoot = $Script:PSRoot"
+    }
+    if (-not $Script:PSRoot) {
+        throw 'Script:PSRoot must be set by the entry-point script before using internal components.'
+    }
+
+    $Script:CliArgs = $args
+    . "$Script:PSRoot\Scripts\Initialize-CoreConfig.ps1"
+    
+    $Script:scriptUnderTest = "$Script:PSRoot\Scripts\OutlookUtils\Outlook.Interface.ps1"
 }
-if (-not $Global:PSRoot) {
-    throw "Global:PSRoot must be set by the entry-point script before using internal components."
-}
 
-#if (-not $Global:CliArgs) {
-    $Global:CliArgs = $args
-#}
-
-# $here = Split-Path -Parent $MyInvocation.MyCommand.Path
-# . "$here/../OutlookUtils/Outlook.Interface.ps1"
 
 Describe "Get-OutlookItemType" {
 
     BeforeAll {
-        . "$Global:PSRoot\Scripts\OutlookUtils\Outlook.Interface.ps1"
+        # InitializeCore
+        if (-not $Script:PSRoot) {
+            $Script:PSRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
+            Write-Host "Set Script:PSRoot = $Script:PSRoot"
+        }
+        if (-not $Script:PSRoot) {
+            throw 'Script:PSRoot must be set by the entry-point script before using internal components.'
+        }
+
+        $Script:CliArgs = $args
+        . "$Script:PSRoot\Scripts\Initialize-CoreConfig.ps1"
+    
+        $Script:scriptUnderTest = "$Script:PSRoot\Scripts\OutlookUtils\Outlook.Interface.ps1"
+        . "$Script:scriptUnderTest"
 
         function New-FakeOutlookItem {
             param (

@@ -8,30 +8,24 @@ Set-Variable -Name Included_Set-Dir_ps1 -Scope Script -Value true
 . "$env:PowerShellScripts\\TerminalUtils\\SetDir-BaseDirsUtils.ps1"  
 . "$env:PowerShellScripts\\TerminalUtils\\SetDir-KeywordDirsUtils.ps1" 
 
-# ==================================================
-#region               Function: Set-Dir
-<#
-.SYNOPSIS
-    Quickly set location (cd) to a common folder by keyword.
-
-.DESCRIPTION
-    Searches KeywordDirs and BaseDirs to resolve a path. Use -List to display available locations.
-
-.PARAMETER Keyword
-    The keyword or folder name to navigate to.
-
-.PARAMETER List
-    Switch to list all known keywords and base directories.
-
-.OUTPUTS
-    None
-
-.EXAMPLE
-    Set-Dir docs
-
-.NOTES
-    Alias: godir
-#>
+#==================================================================================
+#region      Function: Set-Dir
+# Description:
+#   Quickly set location (cd) to a common folder using a short keyword,
+#   or by searching fallback base directories.
+#
+# Parameters:
+#   -Keyword (string): Short keyword or folder name to navigate to.
+#   -List (switch): Display all available keywords and base directories.
+#
+# Aliases:
+#   godir
+#
+# Usage:
+#   godir docs
+#   godir temp
+#   godir -List
+#==================================================================================
 function Set-Dir {
     [CmdletBinding()]
     param (
@@ -86,6 +80,5 @@ function Set-Dir {
     Write-Host "Could not resolve keyword or locate directory for '$Keyword'." -ForegroundColor Yellow
 }
 #endregion
-# ==================================================
 # ********************************************************************
 

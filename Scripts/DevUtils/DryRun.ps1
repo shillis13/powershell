@@ -1,4 +1,17 @@
+
+
 <# ##########################################################################
+.SYNOPSIS
+    Dry-run control module for safe globaling execution.
+
+.DESCRIPTION
+    Provides a centralized, reusable way to manage dry-run behavior in globals.
+    Default state is DryRun = $true, enforcing safe no-operation mode until explicitly overridden.
+
+.NOTES
+#############################################################################
+#>
+if ( -not ('ItemActionType' -as [type])) {
  enum ItemActionType {
         UnknownAction
         NoAction
@@ -13,6 +26,19 @@
     } 
 }
 
+if (-not $Script:PSRoot) {
+    $Script:PSRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
+    Write-Host "Set Script:PSRoot = $Script:PSRoot"
+    
+    . "$Script:PSRoot\Scripts\Initialize-CoreConfig.ps1"
+}
+if (-not $Script:PSRoot) {
+    throw "Script:PSRoot must be set by the entry-point script before using internal components."
+}
+
+if (-not $Script:CliArgs -and $args) {
+    $Script:CliArgs = $args
+}
 
 #___________________________________________________________________________________
 #region 	*** PowerShell Block Guard to prevent multiple includes of a file
@@ -23,7 +49,7 @@ if (-not (Get-Variable -Name Included_DryRun_Block -Scope Global -ErrorAction Si
 
    
     # Initialize Private DryRun flag
-    $global:pDryRun = $true
+    $Script:DryRun = $true
 
 }
 # Move this and endregion to end-point of code to guard
@@ -41,94 +67,68 @@ if (-not (Get-Variable -Name Included_DryRun_Block -Scope Global -ErrorAction Si
 
 .EXAMPLE
     Set-DryRun -Enabled $true
-# ==================================================
-#region               Function: Set-DryRun
-<#
-.SYNOPSIS
-    Sets the dry-run mode globally.
-
-.PARAMETER Enabled
-    Enable or disable dry-run mode.
-
-.OUTPUTS
-    None
-
-.EXAMPLE
-    Set-DryRun -Enabled $true
-
-.NOTES
-    Maintains global:pDryRun state.
 #>
 function Set-DryRun {
-    [CmdletBinding()]
     param (
         [bool]$Enabled
     )
-    $global:pDryRun = $Enabled
-    $global:pDryRun = $global:pDryRun
+    $Script:DryRun = $Enabled
+    #$Script:DryRun = $Script:DryRun
 }
 #endregion
-# ==================================================
 #=======================================================================================
 
 
-# ==================================================
-#region               Function: Get-DryRun
+#=======================================================================================
+#region     Function: Get current dry-run state
 <#
 .SYNOPSIS
     Gets the current dry-run state.
 
-.OUTPUTS
-    [bool]
+.RETURNS
+    A boolean indicating whether dry-run mode is enabled or disabled.
 
 .EXAMPLE
-    $state = Get-DryRun
-
-.NOTES
-    Returns the global:pDryRun setting.
+    $dryRunState = Get-DryRun
 #>
 function Get-DryRun {
-    [CmdletBinding()]
-    param()
-    return $global:pDryRun
+    return $Script:DryRun
 }
 #endregion
-# ==================================================
+#=======================================================================================
 
 
-# ==================================================
-#region               Function: Invoke-WithDryRunOverride
+
+#=======================================================================================
+#region     Function: Invoke-WithDryRunOverride
 <#
 .SYNOPSIS
-    Invokes a script block temporarily overriding dry-run mode.
+    Invokes a global block temporarily overriding the dry-run mode.
 
 .PARAMETER TemporaryState
-    Temporary dry-run state to use.
+    A boolean value indicating the temporary state of dry-run mode.
 
-.PARAMETER GlobalBlock
-    Script block to execute.
-
-.OUTPUTS
-    None
+.PARAMETER globalBlock
+    A script block to execute while the dry-run mode is temporarily overridden.
 
 .EXAMPLE
-    Invoke-WithDryRunOverride -TemporaryState $false -GlobalBlock { Do-Stuff }
+    Invoke-WithDryRunOverride -TemporaryState $false -globalBlock { <script> }
 #>
 function Invoke-WithDryRunOverride {
     [CmdletBinding()]
     param (
         [bool]$TemporaryState,
-        [scriptblock]$GlobalBlock
+        [globalblock]$globalBlock
     )
-    $originalState = $global:pDryRun
+
+    $originalState = $Script:DryRun
     try {
-        $global:pDryRun = $TemporaryState
-        & $GlobalBlock
+        $Script:DryRun = $TemporaryState
+        & $globalBlock
     } finally {
-        $global:pDryRun = $originalState
+        $Script:DryRun = $originalState
     }
 }
 #endregion
-# ==================================================
 #=======================================================================================
 

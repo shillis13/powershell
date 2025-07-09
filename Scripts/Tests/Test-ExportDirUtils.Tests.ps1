@@ -1,14 +1,48 @@
 
+# ===========================================================================================
+#region       Ensure PSRoot and Dot Source Core Globals
+# ===========================================================================================
+
+function InitializeCore {
+    if (-not $Script:PSRoot) {
+        $Script:PSRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
+        Write-Host "Set Script:PSRoot = $Script:PSRoot"
+    }
+    if (-not $Script:PSRoot) {
+        throw 'Script:PSRoot must be set by the entry-point script before using internal components.'
+    }
+
+    $Script:CliArgs = $args
+    . "$Script:PSRoot\Scripts\Initialize-CoreConfig.ps1"
+    
+    $Script:scriptUnderTest =  "$Script:PSRoot\Scripts\FileUtils\Export-DirUtils.ps1"
+}
+
+#endregion
+# ===========================================================================================
+
+
 Describe "Export-DirUtils Test of Directory Hierarchy" {
     #region     BeforeAll
     BeforeAll {
+        # InitializeCore
+        if (-not $Script:PSRoot) {
+            $Script:PSRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
+            Write-Host "Set Script:PSRoot = $Script:PSRoot"
+        }
+        if (-not $Script:PSRoot) {
+            throw 'Script:PSRoot must be set by the entry-point script before using internal components.'
+        }
+
+        $Script:CliArgs = $args
+        . "$Script:PSRoot\Scripts\Initialize-CoreConfig.ps1"
+    
+        $Script:scriptUnderTest = "$Script:PSRoot\Scripts\FileUtils\Export-DirUtils.ps1"
+        . "$Script:scriptUnderTest"
+        
         # Dot-source or define the function you're testing or need to use
-        Import-Module "$env:PowerShellModules\VirtualFolderFileUtils\VirtualFolderFileUtils.psd1" -Force
-        . "$env:PowerShellScripts\FileUtils\Export-DirUtils.ps1" 
-        . "$env:PowerShellScripts\DevUtils\Logging.ps1"
-        . "$env:PowerShellScripts\DevUtils\DryRun.ps1"
-        . "$env:PowerShellScripts\FileUtils\Zip-Contents.ps1" 
-        . "$env:PowerShellScripts\FileUtils\Export-DirUtils.ps1"      
+        #Import-Module "$env:PowerShellModules\VirtualFolderFileUtils\VirtualFolderFileUtils.psd1" -Force
+       . "$Script:PSRoot\Scripts\FileUtils\VirtualFolderFileUtils.ps1"
 
         function Write-DirFileTestHierarchy {
             param([string]$RootPath)

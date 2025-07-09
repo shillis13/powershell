@@ -19,11 +19,15 @@
 
 #___________________________________________________________________________________
 #region 	 PowerShell Block Guard to prevent a section of code from being read multiple times 
-if (-not (Get-Variable -Name Included_Initialize-CoreConfig_Block -Scope Global -ErrorAction SilentlyContinue)) { 
-    Set-Variable -Name Included_Initialize-CoreConfig_Block -Scope Global -Value $true
+if (-not $Script:Included_Initialize_CoreConfig) {   #  -ErrorAction SilentlyContinue
+    $Script:Included_Initialize_CoreConfig = $true
+
     #Dot Source the Aliases file
     . "PowerShell_Aliases.ps1"   
 } # Move this and endregion to end-point of code to guard
+else {
+    return
+}
 #endregion	end of guard
 
 
@@ -49,26 +53,26 @@ $execArg = $false
 $helpArg = $false
 $remainingArgs = @()
 
-Write-Host ("CliArgs = " + (Format-ToString($Global:CliArgs)))
+# Write-Host "CoreConfig: CliArgs = $(Format-ToString($Script:CliArgs))"
 
-for ($i = 0; $i -lt $Global:CliArgs.Count; $i++) {
-    Write-Host "args[$i] = $($Global:CliArgs[$i])"
-    if ($Global:CliArgs[$i] -match "-LogLevel") {
-            if ($i + 1 -lt $Global:CliArgs.Count) {
-                $logLevelArg = $Global:CliArgs[$i + 1]
+for ($i = 0; $i -lt $Script:CliArgs.Count; $i++) {
+    Write-Host "args[$i] = $($Script:CliArgs[$i])"
+    if ($Script:CliArgs[$i] -match "-LogLevel") {
+            if ($i + 1 -lt $Script:CliArgs.Count) {
+                $logLevelArg = $Script:CliArgs[$i + 1]
                 $i++
             }
-    } elseif ($Global:CliArgs[$i] -match "-Debug") {
+    } elseif ($Script:CliArgs[$i] -match "-Debug") {
         $DebugPreference = "Continue"
-    } elseif ($Global:CliArgs[$i] -match "-Exec") {
+    } elseif ($Script:CliArgs[$i] -match "-Exec") {
         $execArg = $true
-    } elseif ($Global:CliArgs[$i] -match "-Help") {
+    } elseif ($Script:CliArgs[$i] -match "-Help") {
         $helpArg = $true
     } else {
-        $remainingArgs += $Global:CliArgs[$i]
+        $remainingArgs += $Script:CliArgs[$i]
     }
 }
-Write-Host "LogLevelArg = $logLevelArg  : execArg = $execArg   :   helpArg = $helpArg   : remainingArgs = " (Format-ToString($remainingArgs))
+#Write-Host "LogLevelArg = $logLevelArg  : execArg = $execArg   :   helpArg = $helpArg   : remainingArgs = " (Format-ToString($remainingArgs))
 #endregion
 
 
@@ -117,7 +121,7 @@ Log -Dbg "DryRun mode set to: $effectiveDryRun"
 
 if ($helpArg) {
     #Write-Host "Common Args: -Exec, -LogLevel <level>, -Help"
-    Get-Help $Global:CliArgs[0]
+    Get-Help $Script:CliArgs[0]
     exit 0
 }
 #endregion
@@ -125,4 +129,5 @@ if ($helpArg) {
 #----------------------------------------------------
 #region     Export Remaining Args
 Set-Variable -Name RemainingArgs -Scope Global -Value $remainingArgs
+Write-Host "CoreConfig: Initialized Remaining Args: $Global:RemainingArgs"
 #endregion

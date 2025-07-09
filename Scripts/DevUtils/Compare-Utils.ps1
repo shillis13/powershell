@@ -1,9 +1,27 @@
 
-Write-Host "Loading Compare-Utils.ps1"
+#Write-Host "Loading Compare-Utils.ps1"
 
 # Imports and Dot Sources
-. "$Global:PSRoot/Scripts/DevUtils/Logging.ps1"
+if (-not $Script:PSRoot) {
+    $Script:PSRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
+    Write-Host "Set Script:PSRoot = $Script:PSRoot"
+    
+    . "$Script:PSRoot\Scripts\Initialize-CoreConfig.ps1"
+}
+if (-not $Script:PSRoot) {
+    throw "Script:PSRoot must be set by the entry-point script before using internal components."
+}
+
+if (-not $Script:CliArgs -and $args) {
+    $Script:CliArgs = $args
+}
         
+if (-not $Global:Included_Format_Utils_Block) { 
+    $Global:Included_Format_Utils_Block = $true
+
+    . "$Script:PSRoot\Scripts\DevUtils\Logging.ps1"
+} 
+
 #======================================================================================
 #region   Function: Compare-SortedCollections
 <#

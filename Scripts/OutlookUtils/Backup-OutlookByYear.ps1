@@ -2,27 +2,27 @@
 #region       Ensure PSRoot and Dot Source Core Globals
 # ===========================================================================================
 
-if (-not $Global:PSRoot) {
-    $Global:PSRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
-    Log -Dbg "Set Global:PSRoot = $Global:PSRoot"
+if (-not $Script:PSRoot) {
+    $Script:PSRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
+    Log -Dbg "Set Script:PSRoot = $Script:PSRoot"
 }
-if (-not $Global:PSRoot) {
-    throw "Global:PSRoot must be set by the entry-point script before using internal components."
-}
-
-if (-not $Global:CliArgs) {
-    $Global:CliArgs = $args
+if (-not $Script:PSRoot) {
+    throw "Script:PSRoot must be set by the entry-point script before using internal components."
 }
 
-. "$Global:PSRoot\Scripts\Initialize-CoreConfig.ps1"
+if (-not $Script:CliArgs) {
+    $Script:CliArgs = $args
+}
+
+. "$Script:PSRoot\Scripts\Initialize-CoreConfig.ps1"
 
 #endregion
 # ===========================================================================================
 
 
-. "$Global:PSRoot\Scripts\DateTimeUtils\DateTimeUtils.ps1"
-. "$Global:PSRoot\Scripts\OutlookUtils\Outlook.Interface.ps1"
-. "$Global:PSRoot\Scripts\OutlookUtils\OutlookLogic.ps1"
+. "$Script:PSRoot\Scripts\DateTimeUtils\DateTime-Utils.ps1"
+. "$Script:PSRoot\Scripts\OutlookUtils\Outlook.Interface.ps1"
+. "$Script:PSRoot\Scripts\OutlookUtils\OutlookLogic.ps1"
 
 #======================================================================================
 #region PowerShell Block Guard
@@ -272,7 +272,7 @@ function Invoke-ProcessFolder {
         [ItemActionType]$Action,
         [int]$MaxItemsToProcess
     )
-    Log -Dbg " SrcFolder = $($SrcFolder.Name) : DstGroups = (Format-Hashtable -Table $DstGroups) : DateSource = $DateSource : Action = $Action"
+    Log -Dbg " SrcFolder = $($SrcFolder.Name) : DstGroups = (Format-ToString  -Obj $DstGroups) : DateSource = $DateSource : Action = $Action"
     foreach ($dstGroup in $DstGroups) {
         if (-not $dstGroup.Folder) { continue }
 

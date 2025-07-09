@@ -1,13 +1,27 @@
-# PowerShell File Guard to prevent multiple includes of a file
-if (Get-Variable -Name Included_ZipContents_ps1 -Scope Script -ErrorAction SilentlyContinue) { return }
-Set-Variable -Name Included_ZipContents_ps1 -Scope Script -Value $true
+# ===========================================================================================
+#region       Ensure PSRoot and Dot Source Core Globals
+# ===========================================================================================
 
-. "$ENV:PowerShellScripts\DevUtils\Logging.ps1" # TODO: Integrate
-. "$ENV:PowerShellScripts\DevUtils\DryRun.ps1"  # TODO: Integrate
+if (-not $Script:PSRoot) {
+    $Script:PSRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
+    Write-Host "Set Script:PSRoot = $Script:PSRoot"
+}
+if (-not $Script:PSRoot) {
+    throw "Script:PSRoot must be set by the entry-point script before using internal components."
+}
+
+if (-not $Script:CliArgs) {
+    $Script:CliArgs = $args
+}
+
+. "$Script:PSRoot\Scripts\Initialize-CoreConfig.ps1"
+
+#endregion
+# ===========================================================================================
 
 if (-not $Global:WinzipExe)     { Set-Variable -Name WinZipExe -Scope Global -Value "C:\Program Files\WinZip\WZZIP.EXE" }
 if (-not $Global:WinZipArgs)    { Set-Variable -Name WinZipArgs -Scope Global -Value "-ycAES256 -P -r" }
-if (-not $Global:DefPw)         { Set-Variable -Name DefPw -Scope Script -Value "1Password!" }
+if (-not $Script:DefPw)         { Set-Variable -Name DefPw -Scope Script -Value "1Password!" }
 
 # Winzip command Example:
 #  & "C:\Program Files\WinZip\WZZIP.EXE" -s"blahblah13!" -ycAES256 -P -r -a "$HOME\Downloads\WPS.zip" .\WindowsPowerShell\
@@ -25,6 +39,8 @@ if (-not $Global:DefPw)         { Set-Variable -Name DefPw -Scope Script -Value 
 # Expand-Files -ZipFilePath $zipPath -TargetDir "C:\Restored"
 
 
+#==================================================================================
+#region
 #========================================
 #region Compress-Contents
 <#
@@ -150,7 +166,7 @@ function Compress-Contents {
         $null = Invoke-Expression "& $cmd"
     }
     else {
-        #Log -DryRun "$Global:WinZipExe (Format-Hashtable($zipArgs))"
+        #Log -DryRun "$Global:WinZipExe (Format-ToString($zipArgs))"
         Log -DryRun "$cmd"
     }
 

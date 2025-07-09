@@ -2,19 +2,19 @@
 #region       Ensure PSRoot and Dot Source Core Globals
 # ===========================================================================================
 
-if (-not $Global:PSRoot) {
-    $Global:PSRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
-    Write-Host "Set Global:PSRoot = $Global:PSRoot"
+if (-not $Script:PSRoot) {
+    $Script:PSRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
+    Write-Host "Set Script:PSRoot = $Script:PSRoot"
 }
-if (-not $Global:PSRoot) {
-    throw "Global:PSRoot must be set by the entry-point script before using internal components."
-}
-
-if (-not $Global:CliArgs) {
-    $Global:CliArgs = $args
+if (-not $Script:PSRoot) {
+    throw "Script:PSRoot must be set by the entry-point script before using internal components."
 }
 
-. "$Global:PSRoot\Scripts\Initialize-CoreConfig.ps1"
+if (-not $Script:CliArgs) {
+    $Script:CliArgs = $args
+}
+
+. "$Script:PSRoot\Scripts\Initialize-CoreConfig.ps1"
 
 if (-not $global:dateTimeDelimiters) {
     $global:dateTimeDelimiters = @("T", " ")
@@ -142,28 +142,77 @@ function ConvertTo-DateTime {
     specified date, time, or datetime formats. It returns a hashtable with the format that
     matched and the substring that matched.
 
+    If none of -DateTimes, -Dates, or -Times are specified, then it will be as if all of them were specified.
+
 .PARAMETER InputString
     The input string to search for date, time, or datetime substrings.
+
+.PARAMETER Patterns
+    An array of custom patterns to use for matching date, time, or datetime substrings.
+
+.PARAMETER DateTimes
+    If set, searches for datetime substrings.
+
+.PARAMETER Dates
+    If set, searches for date substrings.
+
+.PARAMETER Times
+    If set, searches for time substrings.
 
 .OUTPUTS
     A hashtable containing the format and matched substring.
 
 .EXAMPLE
     $result = Find-DateTimeSubstrings -InputString "The event is scheduled for 2025-04-26T14:30:00 and 04/26/2025."
+    # Output:
+    # Type       Format              Substring           Index
+    # ----       ------              ---------           -----
+    # DateTime   yyyy-MM-ddTHH:mm:ss 2025-04-26T14:30:00  25
+    # Date       MM/dd/yyyy          04/26/2025          48
+
+.EXAMPLE
+    $result = Find-DateTimeSubstrings -InputString "Meeting at 10:00 AM on 07/05/2025."
+    # Output:
+    # Type       Format     Substring   Index
+    # ----       ------     ---------   -----
+    # Time       hh:mm tt   10:00 AM    11
+    # Date       MM/dd/yyyy 07/05/2025  22
+
+.EXAMPLE
+    $result = Find-DateTimeSubstrings -InputString "Start: 2025-07-05 08:00:00, End: 2025-07-05 17:00:00"
+    # Output:
+    # Type       Format              Substring           Index
+    # ----       ------              ---------           -----
+    # DateTime   yyyy-MM-dd HH:mm:ss 2025-07-05 08:00:00 7
+    # DateTime   yyyy-MM-dd HH:mm:ss 2025-07-05 17:00:00 30
+
+.EXAMPLE
+    $result = Find-DateTimeSubstrings -InputString "No dates or times here."
+    # Output:
+    # (empty array)
+
 #>
 # ===========================================================================================
 function Find-DateTimeSubstrings {
     param (
-        [string]$InputString
+        [string]$InputString,
+        [array]$Patterns,
+        [switch]$DateTimes,
+        [switch]$Dates,
+        [switch]$Times
     )
+
+    # If Patterns is null or empty, get patterns based on the specified switches
+    if (-not $Patterns) {
+        $Patterns = Get-DateTimePatterns -DateTimes:$DateTimes -Dates:$Dates -Times:$Times
+    }
 
     $theMatches = @()
     $uniqueMatches = @{ }
     $matchedIndices = @()
 
-    # Search for matches
-    $patterns = Get-DateTimePatterns -Delimiters $global:dateTimeDelimiters -Date -Time -DateTime
-    foreach ($pattern in $patterns) {
+    # Search for matches using the specified or default patterns
+    foreach ($pattern in $Patterns) {
         $regexPattern = $pattern.regex
 
         $matchesFound = [regex]::Matches($InputString, $regexPattern, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
@@ -191,6 +240,7 @@ function Find-DateTimeSubstrings {
                             Format = $pattern.format
                             Substring = $matchedString
                             Index = $startIndex
+                            #Regex = $regexPattern
                         }
                     )
                     $matchedIndices += [PSCustomObject]@{ Start = $startIndex; End = $endIndex }
@@ -204,7 +254,6 @@ function Find-DateTimeSubstrings {
 #endregion
 # ===========================================================================================
 
-
 # ===========================================================================================
 #region     Function: Find-DateValue
 <#
@@ -215,9 +264,34 @@ function Find-DateTimeSubstrings {
     This function takes an input string, searches for substrings that match any of the
     specified date, time, or datetime formats, and converts the first match to a DateTime object.
     It returns a hashtable with the keys 'substring', 'format', 'regex', and 'value'.
+    
+    If -FromTheBack is specified, the search is performed from back to front.
+    The -Skip parameter allows skipping the first N matches.
+    The -Count parameter returns the number of matches found.
 
 .PARAMETER StringWithDate
     The input string to search for date, time, or datetime substrings.
+
+.PARAMETER Patterns
+    An array of custom patterns to use for matching date, time, or datetime substrings.
+
+.PARAMETER DateTimes
+    If set, searches for datetime substrings.
+
+.PARAMETER Dates
+    If set, searches for date substrings.
+
+.PARAMETER Times
+    If set, searches for time substrings.
+
+.PARAMETER FromTheBack
+    If set, searches from the back to the front of the string.
+
+.PARAMETER Skip
+    The number of matches to skip.
+
+.PARAMETER Count
+    If set, returns the number of matches found.
 
 .OUTPUTS
     A hashtable containing the keys 'substring', 'format', 'regex', and 'value'.
@@ -229,19 +303,49 @@ function Find-DateTimeSubstrings {
 # ===========================================================================================
 function Find-DateValue {
     param (
-        [string]$StringWithDate
+        [string]$StringWithDate,
+        [array]$Patterns,
+        [switch]$DateTimes,
+        [switch]$Dates,
+        [switch]$Times,
+        [switch]$FromTheBack,
+        [int]$Skip = 0,
+        [switch]$Count
     )
 
-    $result = $null
-    $theMatches = Find-DateTimeSubstrings -InputString $StringWithDate
+    # Find all date, time, or datetime substrings in the input string
+    $theMatches = Find-DateTimeSubstrings -InputString $StringWithDate -Patterns $Patterns -DateTimes:$DateTimes -Dates:$Dates -Times:$Times
 
+    # Sort matches based on the FromTheBack parameter
+    if ($FromTheBack) {
+        $theMatches = $theMatches | Sort-Object -Property Index -Descending
+    } else {
+        $theMatches = $theMatches | Sort-Object -Property Index
+    }
+
+    # Skip the specified number of matches
+    if ($Skip -gt 0) {
+        $theMatches = $theMatches | Select-Object -Skip $Skip
+        if ($theMatches -isnot [array]) {
+            $theMatches = @($theMatches)
+        }
+    }
+
+    # Return the count of matches if the Count parameter is specified
+    if ($Count) {
+        return $theMatches.Count
+    }
+
+    # Extract the first match after skipping
+    $result = $null
     if ($theMatches.Count -gt 0) {
         $match = $theMatches[0]
         $value = ConvertTo-DateTime -dateString $match.Substring -Format $match.Format
         $result = @{
+            Type = $match.type
+            Format = $match.format
             Substring = $match.Substring
-            Format = $match.Format
-            Regex = $match.Regex
+            Index = $match.Index
             Value = $value
         }
     }
@@ -253,21 +357,134 @@ function Find-DateValue {
 
 
 # ===========================================================================================
-#region     Function: Remove-TrailingDateFromName
-function Remove-TrailingDateFromName {
+#region     Function: Remove-DateTimesFromString
+<#
+.SYNOPSIS
+    Removes date, time, or datetime substrings from a given input string.
+
+.DESCRIPTION
+    This function takes an input string and searches for substrings that match any of the
+    specified date, time, or datetime formats. It removes these substrings based on the 
+    specified parameters, including any enclosing characters. If the enclosing characters 
+    are the same, only one of them is removed. If two consecutive non-alphanumeric characters 
+    are left together after removal, one of them is removed.
+
+.PARAMETER Name
+    The input string to remove date, time, or datetime substrings from.
+
+.PARAMETER RemoveFromFront
+    If set, removes date, time, or datetime substrings starting from the front of the string. 
+    This option requires that RemoveCount be specified, or else it removes all date-times.
+
+.PARAMETER RemoveCount
+    The number of date, time, or datetime substrings to remove. If not specified, all substrings are removed.  
+    By default starts from the back.
+
+.PARAMETER Dates
+    If set, only date substrings are removed.
+
+.PARAMETER Times
+    If set, only time substrings are removed.
+
+.OUTPUTS
+    A string with the specified date, time, or datetime substrings removed.
+
+.EXAMPLE
+    $result = Remove-DateTimesFromString -Name "Report_2025-07-05"
+    # Output: "Report"
+
+.EXAMPLE
+    $result = Remove-DateTimesFromString -Name "Event (12/05/2025)"
+    # Output: "Event"
+
+.EXAMPLE
+    $result = Remove-DateTimesFromString -Name "Meeting at 10:00 AM"
+    # Output: "Meeting at"
+
+.EXAMPLE
+    $result = Remove-DateTimesFromString -Name "Document 2025-07-05 at 12:00:00" -RemoveFromFront
+    # Output: "Document at 12:00:00"
+
+.EXAMPLE
+    $result = Remove-DateTimesFromString -Name "Document 2025-07-05 12:00:00" -RemoveCount 1
+    # Output: "Document"
+
+.EXAMPLE
+    $result = Remove-DateTimesFromString -Name "Document Date: 2025-07-05 Time: 12:00:00" -RemoveCount 1
+    # Output: "Document Date: 2025-07-05 Time:"
+
+.EXAMPLE
+    $result = Remove-DateTimesFromString -Name "Event (12/05/2025) Poker"
+    # Output: "Event Poker"
+
+#>
+# ===========================================================================================
+function Remove-DateTimesFromString {
     param (
-        [string]$Name
+        [string]$Name,
+        [int]$RemoveCount = 0,
+        [switch]$RemoveFromFront,
+        [switch]$Dates,
+        [switch]$Times,
+        [switch]$StrictMode
     )
-    $patterns = Get-DateTimePatterns -Date
-    foreach ($pattern in $patterns) {
-        if ($Name -match $pattern.regex) {
-            return ($Name -replace $pattern.regex, '').TrimEnd()
+
+    # Determine the appropriate patterns to use based on the parameters
+    $patterns = if ($Dates) {
+        Get-DateTimePatterns -Date
+    } elseif ($Times) {
+        Get-DateTimePatterns -Time
+    } else {
+        Get-DateTimePatterns -Date -Time -DateTime
+    }
+
+    # Find all date, time, or datetime substrings in the input string
+    $foundMatches = Find-DateTimeSubstrings -InputString $Name -Patterns $patterns | Sort-Object -Property Index -Descending
+
+    # If a specific number of matches to remove is specified and it is less than the total number of matches
+    if ($RemoveCount -gt 0 -and $RemoveCount -lt $foundMatches.Count) {
+        if ($RemoveFromFront) {
+            # Remove elements from the front to retain only the last $RemoveCount elements
+            $foundMatches = $foundMatches | Select-Object -Skip ($foundMatches.Count - $RemoveCount)
+        } else {
+            # Retain only the first $RemoveCount elements from the back
+            $foundMatches = $foundMatches | Select-Object -First $RemoveCount
         }
     }
-    return $Name
+
+    # Iterate through each match to remove the substrings from the input string
+    foreach ($match in $foundMatches) {
+        $startIndex = $match.Index
+        $endIndex = $startIndex + $match.Substring.Length - 1
+        $leftChar = if ($startIndex -gt 0) { $Name[$startIndex - 1] } else { '' }
+        $rightChar = if ($endIndex -lt ($Name.Length - 1)) { $Name[$endIndex + 1] } else { '' }
+
+        # Remove the matched substring along with any enclosing characters
+        if (-not $StrictMode) {
+            if ($leftChar -match '[\(\{\<]' -and $rightChar -match '[\)\}\>]' ) {
+                $Name = $Name.Remove($startIndex - 1, $match.Substring.Length + 2)
+            } elseif ($leftChar -match '[\s_\-]' -and $rightChar -match '[\s_\-]') {
+                $Name = $Name.Remove($startIndex, $match.Substring.Length + 1)
+            } else {
+                $Name = $Name.Remove($startIndex, $match.Substring.Length)
+            }
+        } else {
+            $Name = $Name.Remove($startIndex, $match.Substring.Length)
+        }
+    }
+
+    # Remove consecutive non-alphanumeric characters that may have been left together after removal
+    $Name = $Name -replace '([^\w\s])\1', '$1'
+
+    # Remove double spaces that may have been left together after removal
+    $Name = $Name -replace '\s{2,}', ' '
+
+    # Return the modified string
+    return $Name.Trim()
 }
 #endregion
 # ===========================================================================================
+
 
 
 # ===========================================================================================
@@ -323,51 +540,80 @@ function Get-DateTimePatterns {
         [switch]$DateTime
     )
 
+    # If none of the switches are specified, set them all to true
+    if (-not $Date -and -not $Time -and -not $DateTime) {
+        $Date = $true
+        $Time = $true
+        $DateTime = $true
+    }
+
     $patterns = @()
 
     $datePatterns = @(
-        @{ format = "yyyy-MM-dd"; regex = "\d{4}-\d{2}-\d{2}" },
-        @{ format = "MM/dd/yyyy"; regex = "\d{2}/\d{2}/\d{4}" },
-        @{ format = "dd/MM/yyyy"; regex = "\d{2}/\d{2}/\d{4}" },
-        @{ format = "yyyyMMdd"; regex = "\d{8}" },
-        @{ format = "yyyy-MM"; regex = "\d{4}-\d{2}" },
-        @{ format = "MM/yyyy"; regex = "\d{2}/\d{4}" },
+        @{ format = "yyyy-MM-dd"; regex = "\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])" },
+        @{ format = "MM-dd-yyyy"; regex = "(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])-\d{4}" },
+        @{ format = "MM/dd/yyyy"; regex = "(0[1-9]|1[0-2])/(0[1-9]|[12]\d|3[01])/\d{4}" },
+        @{ format = "dd/MM/yyyy"; regex = "(0[1-9]|[12]\d|3[01])/(0[1-9]|1[0-2])/\d{4}" },
+        @{ format = "yyyyMMdd"; regex = "\d{4}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])" },
+        @{ format = "yyyy-MM"; regex = "\d{4}-(0[1-9]|1[0-2])" },
+        @{ format = "MM/yyyy"; regex = "(0[1-9]|1[0-2])/\d{4}" },
+        @{ format = "MM-yyyy"; regex = "(0[1-9]|1[0-2])-\d{4}" },
+        @{ format = "MM_yyyy"; regex = "(0[1-9]|1[0-2])_\d{4}" },
         @{ format = "yyyy"; regex = "\d{4}" },
-        @{ format = "yy-MM-dd"; regex = "\d{2}-\d{2}-\d{2}" },
-        @{ format = "MM/dd/yy"; regex = "\d{2}/\d{2}/\d{2}" },
-        @{ format = "dd/MM/yy"; regex = "\d{2}/\d{2}/\d{2}" },
-        @{ format = "yyMMdd"; regex = "\d{6}" },
-        @{ format = "yy-MM"; regex = "\d{2}-\d{2}" },
-        @{ format = "MM/yy"; regex = "\d{2}/\d{2}" }
+        @{ format = "yy-MM-dd"; regex = "\d{2}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])" },
+        @{ format = "MM/dd/yy"; regex = "(0[1-9]|1[0-2])/(0[1-9]|[12]\d|3[01])/\d{2}" },
+        @{ format = "dd/MM/yy"; regex = "(0[1-9]|[12]\d|3[01])/(0[1-9]|1[0-2])/\d{2}" },
+        @{ format = "yyMMdd"; regex = "\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])" },
+        @{ format = "yy-MM"; regex = "\d{2}-(0[1-9]|1[0-2])" },
+        @{ format = "MM/yy"; regex = "(0[1-9]|1[0-2])/\d{2}" },
+        @{ format = "MM-yy"; regex = "(0[1-9]|1[0-2])-\d{2}" },
+        @{ format = "MM_yy"; regex = "(0[1-9]|1[0-2])_\d{2}" }
     )
 
     $timePatterns = @(
-        @{ format = "HH:mm:ss"; regex = "\d{2}:\d{2}:\d{2}" },
-        @{ format = "HH:mm"; regex = "\d{2}:\d{2}" },
-        @{ format = "HH.mm.ss"; regex = "\d{2}\.\d{2}\.\d{2}" },
-        @{ format = "HH.mm"; regex = "\d{2}\.\d{2}" },
-        @{ format = "HH:mm:ss zzz"; regex = "\d{2}:\d{2}:\d{2} [+-]\d{2}:\d{2}" },
-        @{ format = "HH:mm zzz"; regex = "\d{2}:\d{2} [+-]\d{2}:\d{2}" },
-        @{ format = "HH.mm.ss zzz"; regex = "\d{2}\.\d{2}\.\d{2} [+-]\d{2}:\d{2}" },
-        @{ format = "HH.mm zzz"; regex = "\d{2}\.\d{2} [+-]\d{2}:\d{2}" },
-        @{ format = "hh:mm:ss tt"; regex = "\d{2}:\d{2}:\d{2} (AM|PM)" },
-        @{ format = "hh:mm tt"; regex = "\d{2}:\d{2} (AM|PM)" },
-        @{ format = "hh.mm.ss tt"; regex = "\d{2}\.\d{2}\.\d{2} (AM|PM)" },
-        @{ format = "hh.mm tt"; regex = "\d{2}\.\d{2} (AM|PM)" },
-        @{ format = "hh:mm:ss tt zzz"; regex = "\d{2}:\d{2}:\d{2} (AM|PM) [+-]\d{2}:\d{2}" },
-        @{ format = "hh:mm tt zzz"; regex = "\d{2}:\d{2} (AM|PM) [+-]\d{2}:\d{2}" },
-        @{ format = "hh.mm.ss tt zzz"; regex = "\d{2}\.\d{2}\.\d{2} (AM|PM) [+-]\d{2}:\d{2}" },
-        @{ format = "hh.mm tt zzz"; regex = "\d{2}\.\d{2} (AM|PM) [+-]\d{2}:\d{2}" }
-        @{ format = "h:mm:ss tt"; regex = "\d{1,2}:\d{2}:\d{2} (AM|PM)" },
-        @{ format = "h:mm tt"; regex = "\d{1,2}:\d{2} (AM|PM)" },
-        @{ format = "h.mm.ss tt"; regex = "\d{1,2}\.\d{2}\.\d{2} (AM|PM)" },
-        @{ format = "h.mm tt"; regex = "\d{1,2}\.\d{2} (AM|PM)" },
-        @{ format = "h:mm:ss tt zzz"; regex = "\d{1,2}:\d{2}:\d{2} (AM|PM) [+-]\d{2}:\d{2}" },
-        @{ format = "h:mm tt zzz"; regex = "\d{1,2}:\d{2} (AM|PM) [+-]\d{2}:\d{2}" },
-        @{ format = "h.mm.ss tt zzz"; regex = "\d{1,2}\.\d{2}\.\d{2} (AM|PM) [+-]\d{2}:\d{2}" },
-        @{ format = "h.mm tt zzz"; regex = "\d{1,2}\.\d{2} (AM|PM) [+-]\d{2}:\d{2}" }
+		# Secs AM|PM TZ
+        @{ format = "hh:mm:ss tt zzz"; regex = "(0?[1-9]|1[0-2]):[0-5]\d:[0-5]\d (AM|PM) [+-][01]?\d:[0-5]\d" },
+        @{ format = "hh.mm.ss tt zzz"; regex = "(0?[1-9]|1[0-2])\.[0-5]\d\.[0-5]\d (AM|PM) [+-][01]?\d:[0-5]\d" },
+        @{ format = "h:mm:ss tt zzz"; regex = "([1-9]|1[0-2]):[0-5]\d:[0-5]\d (AM|PM) [+-][01]?\d:[0-5]\d" },
+        @{ format = "h.mm.ss tt zzz"; regex = "([1-9]|1[0-2])\.[0-5]\d\.[0-5]\d (AM|PM) [+-][01]?\d:[0-5]\d" },
+		# Secs, TZ
+        @{ format = "HH.mm.ss zzz"; regex = "([01]?\d|2[0-3])\.[0-5]\d\.[0-5]\d [+-][01]?\d:[0-5]\d" },
+        @{ format = "HH:mm:ss zzz"; regex = "([01]?\d|2[0-3]):[0-5]\d:[0-5]\d [+-][01]?\d:[0-5]\d" },
+        @{ format = "h:mm:ss zzz"; regex = "([1-9]|1[0-2]):[0-5]\d:[0-5]\d [+-][01]?\d:[0-5]\d" },
+        @{ format = "h.mm.ss zzz"; regex = "([1-9]|1[0-2])\.[0-5]\d\.[0-5]\d [+-][01]?\d:[0-5]\d" },
+		# Secs, AM|PM
+        @{ format = "hh:mm:ss tt"; regex = "(0?[1-9]|1[0-2]):[0-5]\d:[0-5]\d (AM|PM)" },
+        @{ format = "hh.mm.ss tt"; regex = "(0?[1-9]|1[0-2])\.[0-5]\d\.[0-5]\d (AM|PM)" },
+        @{ format = "h:mm:ss tt"; regex = "([1-9]|1[0-2]):[0-5]\d:[0-5]\d (AM|PM)" },
+        @{ format = "h.mm.ss tt"; regex = "([1-9]|1[0-2])\.[0-5]\d\.[0-5]\d (AM|PM)" },
+		# AM|PM TZ
+        @{ format = "hh:mm tt zzz"; regex = "(0?[1-9]|1[0-2]):[0-5]\d (AM|PM) [+-][01]?\d:[0-5]\d" },
+        @{ format = "hh.mm tt zzz"; regex = "(0?[1-9]|1[0-2])\.[0-5]\d (AM|PM) [+-][01]?\d:[0-5]\d" },
+        @{ format = "h:mm tt zzz"; regex = "([1-9]|1[0-2]):[0-5]\d (AM|PM) [+-][01]?\d:[0-5]\d" },
+        @{ format = "h.mm tt zzz"; regex = "([1-9]|1[0-2])\.[0-5]\d (AM|PM) [+-][01]?\d:[0-5]\d" }
+		# Secs
+        @{ format = "HH:mm:ss"; regex = "([01]?\d|2[0-3]):[0-5]\d:[0-5]\d" },
+        @{ format = "HH.mm.ss"; regex = "([01]?\d|2[0-3])\.[0-5]\d\.[0-5]\d" },
+        @{ format = "h:mm:ss"; regex = "([1-9]|1[0-2]):[0-5]\d:[0-5]\d" },
+        @{ format = "h.mm.ss"; regex = "([1-9]|1[0-2])\.[0-5]\d\.[0-5]\d" },
+		# TZ
+        @{ format = "HH:mm zzz"; regex = "([01]?\d|2[0-3]):[0-5]\d [+-][01]?\d:[0-5]\d" },
+        @{ format = "HH.mm zzz"; regex = "([01]?\d|2[0-3])\.[0-5]\d [+-][01]?\d:[0-5]\d" },
+        @{ format = "h:mm zzz"; regex = "([1-9]|1[0-2]):[0-5]\d [+-][01]?\d:[0-5]\d" },
+        @{ format = "h.mm zzz"; regex = "([1-9]|1[0-2])\.[0-5]\d [+-][01]?\d:[0-5]\d" }
+		# AM|PM
+        @{ format = "hh:mm tt"; regex = "(0?[1-9]|1[0-2]):[0-5]\d (AM|PM)" },
+        @{ format = "hh.mm tt"; regex = "(0?[1-9]|1[0-2])\.[0-5]\d (AM|PM)" },
+        @{ format = "h:mm tt"; regex = "([1-9]|1[0-2]):[0-5]\d (AM|PM)" },
+        @{ format = "h.mm tt"; regex = "([1-9]|1[0-2])\.[0-5]\d (AM|PM)" },
+		# Hours Mins
+        @{ format = "HH:mm"; regex = "([01]?\d|2[0-3]):[0-5]\d" },
+        @{ format = "HH.mm"; regex = "([01]?\d|2[0-3])\.[0-5]\d" },
+        @{ format = "h:mm"; regex = "([1-9]|1[0-2]):[0-5]\d" },
+        @{ format = "h.mm"; regex = "([1-9]|1[0-2])\.[0-5]\d" }
     )
 
+    # Generate datetime patterns if $DateTime is specified
     if ($DateTime) {
         foreach ($delimiter in $Delimiters) {
             foreach ($datePattern in $datePatterns) {
@@ -382,6 +628,7 @@ function Get-DateTimePatterns {
         }
     }
 
+    # Add date patterns if $Date is specified
     if ($Date) {
         foreach ($datePattern in $datePatterns) {
             $patterns += @{
@@ -392,6 +639,7 @@ function Get-DateTimePatterns {
         }
     }
 
+    # Add time patterns if $Time is specified
     if ($Time) {
         foreach ($timePattern in $timePatterns) {
             $patterns += @{

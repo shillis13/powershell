@@ -3,13 +3,51 @@
 
 #$here = Split-Path -Parent $MyInvocation.MyCommand.Path
 
-                                                                                                                                                                                                                                                                                          #===============================================================================================                                                                                                                                   
+# ===========================================================================================
+#region       Ensure PSRoot and Dot Source Core Globals
+# ===========================================================================================
+
+function InitializeCore {
+    if (-not $Script:PSRoot) {
+        $Script:PSRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
+        Write-Host "Set Script:PSRoot = $Script:PSRoot"
+    }
+    if (-not $Script:PSRoot) {
+        throw 'Script:PSRoot must be set by the entry-point script before using internal components.'
+    }
+
+    $Script:CliArgs = $args
+    . "$Script:PSRoot\Scripts\Initialize-CoreConfig.ps1"
+    
+    #$Script:scriptUnderTest = "$Script:PSRoot\Scripts\DevUtils\Compare-Utils.ps1"
+}
+
+
+#endregion
+# ===========================================================================================
+
+# Test_SelectFiles.Tests.ps1
+#$scriptUnderTest = "$Script:PSRoot\Scripts\DevUtils\Logging.ps1"
+
+# =============================================================                                                                                                                                   
 Describe "New-ItemNameWithDate" {
 
     $script:cases = @()
 
     BeforeAll {
-        . "$env:PowerShellScripts\DateTimeUtils\DateTimeUtils.ps1"
+        # InitializeCore
+        if (-not $Script:PSRoot) {
+            $Script:PSRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
+            Write-Host "Set Script:PSRoot = $Script:PSRoot"
+        }
+        if (-not $Script:PSRoot) {
+            throw 'Script:PSRoot must be set by the entry-point script before using internal components.'
+        }
+
+        $Script:CliArgs = $args
+        . "$Script:PSRoot\Scripts\Initialize-CoreConfig.ps1"
+
+        . "$env:PowerShellScripts\DateTimeUtils\DateTime-Utils.ps1"
         . "$env:PowerShellScripts\OutLookUtils\OutlookLogic.ps1"
 
 
@@ -43,9 +81,24 @@ Describe "New-ItemNameWithDate" {
 Describe "New-ItemNameWithDate" {
     
     BeforeAll {
-        . "$env:PowerShellScripts\DateTimeUtils\DateTimeUtils.ps1"
-        . "$env:PowerShellScripts\OutLookUtils\OutlookLogic.ps1"
-        . "$env:PowerShellScripts\DateTimeUtils\DateTimeUtils.ps1"      
+        if (-not $Script:PSRoot) {
+            $Script:PSRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
+            Write-Host "Set Script:PSRoot = $Script:PSRoot"
+
+        }
+        if (-not $Script:PSRoot) {
+            throw "Script:PSRoot must be set by the entry-point script before using internal components."
+        }
+
+        #if (-not $Script:CliArgs) {
+            $Script:CliArgs = $args
+        #}
+        # Ensure Logging.ps1 is sourced before running these tests.
+        . "$Script:PSRoot\Scripts\Initialize-CoreConfig.ps1"
+
+        . "$Script:PSRoot\Scripts\DateTimeUtils\DateTime-Utils.ps1"
+        . "$Script:PSRoot\Scripts\OutLookUtils\OutlookLogic.ps1"
+        . "$Script:PSRoot\Scripts\DateTimeUtils\DateTime-Utils.ps1"      
 
         $script:testDate = [datetime]"2023-04-15"
     }

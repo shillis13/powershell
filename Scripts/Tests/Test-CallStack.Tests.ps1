@@ -6,27 +6,40 @@
 #>
 #=========================
 
-# Ensure DevUtils is sourced before running these tests.
-$here = Split-Path -Parent $MyInvocation.MyCommand.Path
-. "$here\..\DevUtils\CallStack.ps1"
+function InitializeCore {
+    if (-not $Script:PSRoot) {
+        $Script:PSRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
+        Write-Host "Set Script:PSRoot = $Script:PSRoot"
+    }
+    if (-not $Script:PSRoot) {
+        throw 'Script:PSRoot must be set by the entry-point script before using internal components.'
+    }
 
-if (-not $Global:PSRoot) {
-    $Global:PSRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
-    Write-Host "Set Global:PSRoot = $Global:PSRoot"
+    $Script:CliArgs = $args
+    . "$Script:PSRoot\Scripts\Initialize-CoreConfig.ps1"
+    
+    $Script:scriptUnderTest = "$Script:PSRoot\Scripts\DevUtils\Get-CallStack.ps1"
 }
-if (-not $Global:PSRoot) {
-    throw "Global:PSRoot must be set by the entry-point script before using internal components."
-}
-
-#if (-not $Global:CliArgs) {
-    $Global:CliArgs = $args
-#}
 
 
 Describe "CallStack.ps1" {
 
     BeforeAll {
-        . "$Global:PSRoot\Scripts\DevUtils\CallStack.ps1"
+        # InitializeCore
+        if (-not $Script:PSRoot) {
+            $Script:PSRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
+            Write-Host "Set Script:PSRoot = $Script:PSRoot"
+        }
+        if (-not $Script:PSRoot) {
+            throw 'Script:PSRoot must be set by the entry-point script before using internal components.'
+        }
+
+        $Script:CliArgs = $args
+        . "$Script:PSRoot\Scripts\Initialize-CoreConfig.ps1"
+    
+        $Script:scriptUnderTest = "$Script:PSRoot\Scripts\DevUtils\Get-CallStack.ps1"
+        # Ensure Select-Files.ps1 is sourced before running these tests.
+        . $scriptUnderTest
     }
 
     Context "Get-CallStackMax and Set-CallStackMax" {
@@ -34,20 +47,23 @@ Describe "CallStack.ps1" {
             $result = Get-CallStackMax
             $result.MaxDepth     | Should -Be 10
             $result.MaxFcnWidth  | Should -Be 40
-            $result.MaxFileWidth | Should -Be 50
+            $result.MaxPathWidth | Should -Be 50
+            $result.MaxLocWidth  | Should -Be 50
             $result.MaxLineWidth | Should -Be 6
         }
 
+        
         It "Should allow updating max values" {
-            Set-CallStackMax -MaxDepth 5 -MaxFcnWidth 20 -MaxFileWidth 30 -MaxLineWidth 4
+            Set-CallStackMax -MaxDepth 5 -MaxFcnWidth 20 -MaxPathWidth 30 -MaxLocWidth 40 -MaxLineWidth 4
             $result = Get-CallStackMax
             $result.MaxDepth     | Should -Be 5
             $result.MaxFcnWidth  | Should -Be 20
-            $result.MaxFileWidth | Should -Be 30
+            $result.MaxPathWidth | Should -Be 30
+            $result.MaxLocWidth  | Should -Be 40
             $result.MaxLineWidth | Should -Be 4
 
             # Set values back to previous
-            Set-CallStackMax -MaxDepth 10 -MaxFcnWidth 40 -MaxFileWidth 50 -MaxLineWidth 6
+            Set-CallStackMax -MaxDepth 10 -MaxFcnWidth 40 -MaxPathWidth 50 -MaxLocWidth 50 -MaxLineWidth 6
         }
     }
 

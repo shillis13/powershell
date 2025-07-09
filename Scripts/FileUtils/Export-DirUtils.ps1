@@ -2,34 +2,34 @@
 #region       Ensure PSRoot and Dot Source Core Globals
 # ===========================================================================================
 
-if (-not $Global:PSRoot) {
-    $Global:PSRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
-    Write-Host "Set Global:PSRoot = $Global:PSRoot"
+if (-not $Script:PSRoot) {
+    $Script:PSRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
+    Write-Host "Set Script:PSRoot = $Script:PSRoot"
 }
-if (-not $Global:PSRoot) {
-    throw "Global:PSRoot must be set by the entry-point script before using internal components."
-}
-
-if (-not $Global:CliArgs) {
-    $Global:CliArgs = $args
+if (-not $Script:PSRoot) {
+    throw "Script:PSRoot must be set by the entry-point script before using internal components."
 }
 
-. "$Global:PSRoot\Scripts\Initialize-CoreConfig.ps1"
+if (-not $Script:CliArgs) {
+    $Script:CliArgs = $args
+}
 
-Import-Module "$Global:PSRoot\Modules\VirtualFolderFileUtils\VirtualFolderFileUtils.psd1" -Force
-
-. "$Global:PSRoot\Scripts\FileUtils\Zip-Contents.ps1"
-. "$Global:PSRoot\Scripts\OutlookUtils\Outlook.Interface.ps1"
+. "$Script:PSRoot\Scripts\Initialize-CoreConfig.ps1"
 
 #endregion
 # ===========================================================================================
+
+# Import-Module "$Script:PSRoot\Modules\VirtualFolderFileUtils\VirtualFolderFileUtils.psd1" # -Force
+. "$Script:PSRoot\Scripts\FileUtils\VirtualFolderFileUtils.ps1"
+. "$Script:PSRoot\Scripts\FileUtils\Zip-Contents.ps1"
+. "$Script:PSRoot\Scripts\OutlookUtils\Outlook.Interface.ps1"
 
 #___________________________________________________________________________________
 #region 	*** PowerShell Block Guard to prevent a section of code from being read multiple times 
 if (-not (Get-Variable -Name Included_Export-DirUtils_Block -Scope Global -ErrorAction SilentlyContinue)) { 
     Set-Variable -Name Included_Export-DirUtils_Block -Scope Global -Value $true
     
-    Set-Variable -Name DefaultExcludeList -Scope Global -Value  @('Temp', 'Archive', 'HelpFiles', 'MSAL', 'Selenium', 'Microsoft')
+    Set-Variable -Name DefaultExcludeList -Scope Global -Value  @('Temp', 'Archive', 'HelpFiles', 'MSAL', 'Selenium', 'Microsoft', 'third_party', 'tmp' )
 
     Set-Variable -Name DefaultRenameExtsList -Scope Global -Value  @{ ps1 = 'ps1.txt'; psm1 = 'psm1.txt' ; bat = 'bat.txt'; py = 'py.txt'  } 
 } # Move this and endregion to end-point of code to guard
@@ -74,7 +74,7 @@ function Export-CleanDir {
         [switch]$NI
     )
 
-    $renExtStr = if( $RenameExts -and $RenameExts.Count -gt 0) { Format-Hashtable -Table $RenameExts } else { "" }
+    $renExtStr = if( $RenameExts -and $RenameExts.Count -gt 0) { Format-ToString  -Obj $RenameExts } else { "" }
     Log -Info ": -SourceDir $SourceDir -DestDir $DestDir -RenExt $renExtStr -Excludes $Excludes -Zip:$Zip -ZipFile $ZipFile -Email:$Email -EmailAddr $EmailAddr -EmailSubject $EmailSubject -Exec:$Exec"
     if ($Exec) { Set-DryRun $false }
 
@@ -148,7 +148,8 @@ function Export-CleanDir {
     if ($Zip) { 
 
         # Compress directory into ZipFile
-        $ZipFilePath = Compress-Contents -SourcePaths @($destRootDirPath) -TargetDir $DestDir -NI:$NI -Exec:$Exec
+        Log -Info "Compress-Contents -SourcePaths $(Format-ToString -obj @($destRootDirPath)) -TargetDir `"$DestDir`" -NI:$NI -Exec:$Exec"
+        $ZipFilePath = Compress-Contents -SourcePaths @($destRootDirPath) -TargetDir "$DestDir" -NI:$NI -Exec:$Exec
         Log -Info "Zipped exported directory $destRootDirPath to $ZipFilePath"
     
         if ($ZipFilePath -and $Email) {
@@ -182,12 +183,12 @@ function Export-CleanDir {
 
             if (-not (Get-DryRun)) {
                 #New-OutlookEmail -To $EmailAddr -Subject $EmailSubject -Body "Email Body" -Attachments @($($originalZipFile))
-                Log -Info ("New-OutlookEmail " + (Format-Hashtable -Table $emailArgs))
+                Log -Info ("New-OutlookEmail " + (Format-ToString  -Obj $emailArgs))
                 New-OutlookEmail @emailArgs
             }
             else {
                 #Log -DryRun "Sending Email: -To $EmailAddr -Subject $EmailSubject -Body 'Email Body' -Attachments = @($($originalZipFile))" #-SendNow
-                Log -DryRun ("New-OutlookEmail " + (Format-HashTable -Table $emailArgs )) #-SendNow
+                Log -DryRun ("New-OutlookEmail " + (Format-ToString -Obj $emailArgs )) #-SendNow
             }
 
             # Change $ZipFile's extension back to zip
@@ -227,8 +228,8 @@ function Export-CleanDir {
 # =======================================================================
 function Copy-CleanZipDir {
     param(
-        [string]$SrcDir = "$Global:PSRoot",
-        [string]$DstDir = "",
+        [string]$SrcDir = "$Script:PSRoot",
+        [string]$DstDir = "$env:HOMEPATH\Downloads",
         [string[]]$ExcludeList = $null,
         [hashtable]$RenameExtsList = $null,
         [switch]$Zip,
@@ -289,12 +290,7 @@ function Copy-CleanZipDir {
     if ($Exec) { $argsList['Exec'] = $Exec }
     if (-not $Interactive) { $argsList['NI'] = $true }
 
-    #Log -Info "Export-CleanDir -SourceDir $SrcDir -DestDir $DstDir -Exclude $Excl -Zip:$Zip -ZipFile $ZipFile -Exec:$Exec"
-    #Export-CleanDir -SourceDir $SrcDir -DestDir $DstDir -Exclude $Excl -Zip:$Zip -ZipFile $ZipFile -Exec:$Exec
-    #$cmd = "& Export-CleanDir " + ($argsList -join ' ')
-    #Log -Info "Invoke-Expression $cmd"
-    #Invoke-Expression $cmd
-    Log -Dbg ("Export-CleanDir " + (Format-Hashtable -Table $argsList ))
+    Log -Dbg ("Export-CleanDir " + (Format-ToString  -Obj $argsList ))
     Export-CleanDir @argsList
 }
 #endregion
@@ -304,6 +300,7 @@ function Copy-CleanZipDir {
 #======================================================================================
 # "Main" block - runs only if executed directly
 #======================================================================================
+#==================================================================================
 # Detect if the script is being run directly or invoked
 if ($MyInvocation.InvocationName -eq $MyInvocation.MyCommand.Name) {
     if ($PSBoundParameters.ContainsKey("Help") -or $PSBoundParameters.ContainsKey("?")) {

@@ -1,86 +1,77 @@
-
 # ===========================================================================================
-#region       Ensure PSRoot and Dot Source Core Globals
-# ===========================================================================================
-
-if (-not $Global:PSRoot) {
-    $Global:PSRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
-    Write-Debug "Set Global:PSRoot = $Global:PSRoot"
-}
-if (-not $Global:PSRoot) {
-    throw "Global:PSRoot must be set by the entry-point script before using internal components."
-}
-
-if (-not $Global:CliArgs) {
-    $Global:CliArgs = $args
-}
-
-. "$Global:PSRoot\Scripts\Initialize-CoreConfig.ps1"
-
-#endregion
+# Ensure PSRoot and Dot Source Core Globals
 # ===========================================================================================
 
-#==================================================================================
-#region     Function: Select-Files
-<#
-    .SYNOPSIS
-        Selects files based on various options.
-    .PARAMETER Dir
-        (Optional) The directory to search for files.
-    .PARAMETER Ext
-        (Optional) The file extension to filter by. If not specified, all files are included.
-    .PARAMETER SubStr
-        (Optional) A substring to filter filenames by. If not specified, all files are included.
-    .PARAMETER Size
-        (Optional) Filter files by size (in bytes). Can use operators like -gt, -lt, -ge, -le, -eq, -ne.
-    .PARAMETER FilterByDate
-        (Optional) Filter files by a specific date. Can use operators like -gt, -lt, -ge, -le, -eq, -ne.
-    .PARAMETER SortByDate
-        (Optional) Sort files by a specific date. Allowed values are: Creation, Modification, Filename.
-    .PARAMETER DateSource
-        (Optional) Specifies the source of the date for filtering and sorting. Allowed values are: Creation, Modification, Filename. Default is Creation.
-    .PARAMETER OrderBy
-        (Optional) Specifies the properties to order files by. Can be specified multiple times. Allowed values are: Name, Date, Size, Dir, Ext.
-    .PARAMETER Order
-        (Optional) The order to sort files: ASC or DSC. Default is ASC.
-    .PARAMETER FirstN
-        (Optional) Select the first N files.
-    .PARAMETER LastN
-        (Optional) Select the last N files.
-    .PARAMETER Recurse
-        (Optional) Recurse into all subdirectories, default to false.
-    .PARAMETER Inverse
-        (Optional) Switch to reverse the selection after filtering.
-    .OUTPUTS
-        A collection of selected files, optionally sorted.
-#>
-#==================================================================================
+if (-not $Script:PSRoot) {
+    $Script:PSRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
+    Write-Debug "Set Script:PSRoot = $Script:PSRoot"
+}
+if (-not $Script:PSRoot) {
+    throw 'Script:PSRoot must be set by the entry-point script before using internal components.'
+}
+
+if (-not $Script:CliArgs) {
+    $Script:CliArgs = $args
+}
+
+. "$Script:PSRoot\Scripts\Initialize-CoreConfig.ps1"
+
+# ===========================================================================================
+# Function: Select-Files
+# ===========================================================================================
 function Select-Files {
 
     param (
-        [string]$Dir = ".",
-        [string]$Ext = "*",
-        [string]$SubStr = "",
+        [string]$Dir = '.',
+        [string]$Ext = '*',
+        [string]$SubStr = '',
 
-        [scriptblock]$Size,
-        [scriptblock]$FilterByDate,
+        [scriptblock[]]$Size, 
+        [scriptblock[]]$FilterByDate, 
 
-        [ValidateSet("Creation", "LastWrite", "Filename")]
-        [string]$SortByDate = "Creation",
+        [ValidateSet('Creation', 'LastWrite', 'Filename')]
+        [string]$DateSource = 'Creation',
 
-        [ValidateSet("Creation", "LastWrite", "Filename")]
-        [string]$DateSource = "Creation",
-
-        [ValidateSet("Name", "Date", "Size", "Dir", "Ext")]
+        [ValidateSet('Name', 'Date', 'Size', 'Dir', 'Ext')]
         [string[]]$OrderBy,
-        [string]$Order = "ASC",
+        [string]$Order = 'ASC',
 
         [int]$FirstN,
         [int]$LastN,
 
         [switch]$Recurse,
-        [switch]$Inverse
+        [switch]$Inverse,
+        [switch]$HelpVerbose 
     )
+
+    if ($HelpVerbose) { 
+        Get-Help -Detailed 
+        Write-Host 'Examples:' 
+        Write-Host "  Select-Files -Dir 'C:\Files' -Ext '.txt'" 
+        Write-Host '  Selects all .txt files in the specified directory.' 
+        Write-Host '' 
+        Write-Host "  Select-Files -Dir 'C:\Files' -SubStr 'report'" 
+        Write-Host "  Selects all files containing 'report' in the filename." 
+        Write-Host '' 
+        Write-Host "  Select-Files -Dir 'C:\Files' -Size { $_ -gt 100KB -and $_ -lt 1MB }" 
+        Write-Host '  Selects all files with size between 100KB and 1MB.' 
+        Write-Host '' 
+        Write-Host "  Select-Files -Dir 'C:\Files' -FilterByDate { $_ -gt '2022-01-01' -and $_ -lt '2023-01-01' }" 
+        Write-Host '  Selects all files created between January 1, 2022, and January 1, 2023.' 
+        Write-Host '' 
+        Write-Host "  Select-Files -Dir 'C:\Files' -OrderBy Name -Order ASC -FirstN 5" 
+        Write-Host '  Selects the first 5 files sorted by name in ascending order.' 
+        Write-Host '' 
+        Write-Host "  Select-Files -Dir 'C:\Files' -Recurse" 
+        Write-Host '  Selects all files in the specified directory and its subdirectories.' 
+        Write-Host '' 
+        Write-Host "  Select-Files -Dir 'C:\Files' -Inverse" 
+        Write-Host '  Selects all files except those that match the specified filters.' 
+        Write-Host '' 
+        Write-Host '  Select-Files --help-verbose' 
+        Write-Host '  Displays detailed help with examples.' 
+        return 
+    } 
 
     if (-not (Test-Path -Path $Dir -PathType Container)) {
         Log -Err "The specified directory does not exist: $Dir"
@@ -93,110 +84,118 @@ function Select-Files {
         $files = $files | Where-Object { $_.Name -like "*$SubStr*" }
     }
 
+
     if ($Size) {
-        $files = $files | Where-Object { Invoke-Expression "$($_.Length) $Size" }
+        foreach ($sizeFilter in $Size) { 
+            $files = $files | Where-Object { Invoke-Expression "$($_.Length) $sizeFilter" }
+        }
     }
 
     if ($FilterByDate) {
-        $files = $files | Where-Object {
-            $fileDate = switch ($DateSource) {
-                "Creation" { $_.CreationTime }
-                "LastWrite" { $_.LastWriteTime }
-                "Filename" {
-                    if ($_ -match "\d{8}") {
-                        [datetime]::ParseExact($matches[0], "yyyyMMdd", $null)
-                    } else {
-                        $null
+        foreach ($dateFilter in $FilterByDate) { 
+            $files = $files | Where-Object {
+                if ($DateSource -eq 'Creation') {
+                    $fileDate = $_.CreationTime
+                }
+                elseif ($DateSource -eq 'LastWrite') {
+                    $fileDate = $_.LastWriteTime
+                }
+                elseif ($DateSource -eq 'Filename') {
+                    if ($_.Name -match '\d{8}') {
+                        $fileDate = [datetime]::ParseExact($matches[0], 'yyyyMMdd', $null)
+                    }
+                    else {
+                        $fileDate = $null
                     }
                 }
+                else {
+                    $fileDate = $null
+                }
+                if (& $dateFilter $fileDate) {
+                    $true
+                }
+                else {
+                    $false
+                }
             }
-            Invoke-Expression "$fileDate $FilterByDate"
         }
+    }
+
+    # Precompute the date value for each file and store it in a custom property
+    foreach ($file in $files) {
+        if ($DateSource -eq 'Creation') {
+            $customDate = $file.CreationTime
+        }
+        elseif ($DateSource -eq 'LastWrite') {
+            $customDate = $file.LastWriteTime
+        }
+        elseif ($DateSource -eq 'Filename') {
+            if ($file.Name -match '\d{8}') {
+                $customDate = [datetime]::ParseExact($matches[0], 'yyyyMMdd', $null)
+            }
+            else {
+                $customDate = $null
+            }
+        }
+        else {
+            $customDate = $null
+        }
+
+        $file | Add-Member -MemberType NoteProperty -Name CustomDate -Value $customDate -PassThru | Out-Null
     }
 
     # Sorting logic based on OrderBy parameter
     foreach ($orderBy in $OrderBy) {
-        switch ($orderBy) {
-            "Name" {
-                $files = if ($Order -eq "ASC") {
-                    $files | Sort-Object -Property Name
-                } else {
-                    $files | Sort-Object -Property Name -Descending
-                }
+        if ($orderBy -eq 'Name') {
+            $files = if ($Order -eq 'ASC') {
+                $files | Sort-Object -Property Name
             }
-            "Date" {
-                $files = if ($Order -eq "ASC") {
-                    $files | Sort-Object -Property @{
-                        Expression = {
-                            switch ($SortByDate) {
-                                "Creation" { $_.CreationTime }
-                                "Modification" { $_.LastWriteTime }
-                                "Filename" {
-                                    if ($_ -match "\d{8}") {
-                                        [datetime]::ParseExact($matches[0], "yyyyMMdd", $null)
-                                    } else {
-                                        $null
-                                    }
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    $files = $files | Sort-Object -Property @{
-                        Expression = {
-                            switch ($SortByDate) {
-                                "Creation" { $_.CreationTime }
-                                "Modification" { $_.LastWriteTime }
-                                "Filename" {
-                                    if ($_ -match "\d{8}") {
-                                        [datetime]::ParseExact($matches[0], "yyyyMMdd", $null)
-                                    } else {
-                                        $null
-                                    }
-                                }
-                            }
-                        }
-                    } -Descending
-                }
+            else {
+                $files | Sort-Object -Property Name -Descending
             }
-            "Size" {
-                $files = if ($Order -eq "ASC") {
-                    $files | Sort-Object -Property Length
-                } else {
-                    $files | Sort-Object -Property Length -Descending
-                }
+        }
+        elseif ($orderBy -eq 'Date') {
+            $files = if ($Order -eq 'ASC') {
+                $files | Sort-Object -Property CustomDate
             }
-            "Dir" {
-                $files = if ($Order -eq "ASC") {
-                    $files | Sort-Object -Property DirectoryName
-                } else {
-                    $files | Sort-Object -Property DirectoryName -Descending
-                }
+            else {
+                $files | Sort-Object -Property CustomDate -Descending
             }
-            "Ext" {
-                $files = if ($Order -eq "ASC") {
-                    $files | Sort-Object -Property Extension
-                } else {
-                    $files | Sort-Object -Property Extension -Descending
-                }
+        }
+        elseif ($orderBy -eq 'Size') {
+            $files = if ($Order -eq 'ASC') {
+                $files | Sort-Object -Property Length
+            }
+            else {
+                $files | Sort-Object -Property Length -Descending
+            }
+        }
+        elseif ($orderBy -eq 'Dir') {
+            $files = if ($Order -eq 'ASC') {
+                $files | Sort-Object -Property DirectoryName
+            }
+            else {
+                $files | Sort-Object -Property DirectoryName -Descending
+            }
+        }
+        elseif ($orderBy -eq 'Ext') {
+            $files = if ($Order -eq 'ASC') {
+                $files | Sort-Object -Property Extension
+            }
+            else {
+                $files | Sort-Object -Property Extension -Descending
             }
         }
     }
 
-    $selectedFiles = $files
+    $selectedFiles = $files | Sort-Object -Property FullName -Unique
 
     if ($FirstN -or $LastN) {
         $firstFiles = @()
         $lastFiles = @()
 
-        if ($FirstN) {
-            $firstFiles = $files | Select-Object -First $FirstN
-        }
-
-        if ($LastN) {
-            $lastFiles = $files | Select-Object -Last $LastN
-        }
-
+        if ($FirstN) { $firstFiles = $selectedFiles | Select-Object -First $FirstN }
+        if ($LastN) { $lastFiles = $selectedFiles | Select-Object -Last $LastN }
         $selectedFiles = $firstFiles + $lastFiles | Sort-Object -Unique -Property FullName
     }
 
@@ -204,16 +203,13 @@ function Select-Files {
         $selectedFiles = $files | Where-Object { $_.FullName -notin $selectedFiles.FullName }
     }
 
-    return $selectedFiles
+    return $selectedFiles.FullName
 }
-#endregion
-#==================================================================================
-
-
-#==================================================================================
+# ===========================================================================================
 # Detect if the script is being run directly or invoked
+# ===========================================================================================
 if ($MyInvocation.InvocationName -eq $MyInvocation.MyCommand.Name) {
-    if ($PSBoundParameters.ContainsKey("Help") -or $PSBoundParameters.ContainsKey("?")) {
+    if ($PSBoundParameters.ContainsKey('Help') -or $PSBoundParameters.ContainsKey('?')) {
         Get-Help -Detailed
         exit
     }
@@ -228,13 +224,21 @@ elseif ($MyInvocation.MyCommand.Path -eq $PSCommandPath) {
     # Script is being executed directly
     $baseName = [System.IO.Path]::GetFileNameWithoutExtension($MyInvocation.MyCommand.Path)
     if (Get-Command $baseName -CommandType Function -ErrorAction SilentlyContinue) {
-        Log -Info "$baseName (Format-ToString($Global:RemainingArgs))"
+        if ($Global:RemainingArgs) {
+            Log -Info "$baseName (Format-ToString -Obj $Global:RemainingArgs)"
+        } else {
+            Log -Info "$baseName"
+        }
         (& $baseName @Global:RemainingArgs)
-    } else {
+    }
+    else {
         Log -Err "No function named '$baseName' found to match script entry point."
     }
 }
 else {
     Log -Warn 'Unexpected Context: $($MyInvocation.MyCommand.Path) -ne $PSCommandPath'
 }
-#==================================================================================
+# ===========================================================================================
+
+
+

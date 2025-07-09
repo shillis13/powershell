@@ -2,25 +2,24 @@
 #region	Ensure PSRoot and Dot Source Core Globals
 # ===========================================================
 
-if (-not $Global:PSRoot) {
-    $Global:PSRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
-    Write-Debug "Set Global:PSRoot = $Global:PSRoot"
+if (-not $Script:PSRoot) {
+    $Script:PSRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
+    Write-Debug "Set Script:PSRoot = $Script:PSRoot"
 }
-if (-not $Global:PSRoot) {
-    throw "Global:PSRoot must be set by the entry-point script before using internal components."
+if (-not $Script:PSRoot) {
+    throw "Script:PSRoot must be set by the entry-point script before using internal components."
 }
-if (-not $Global:CliArgs) {
-    $Global:CliArgs = $args
+if (-not $Script:CliArgs) {
+    $Script:CliArgs = $args
 }
 
-. "$Global:PSRoot\Scripts\Initialize-CoreConfig.ps1"
-
-# Import modules
-. "$Global:PSRoot\Scripts\FileUtils\Select-Files.ps1" # TODO: integrate
+. "$Script:PSRoot\Scripts\Initialize-CoreConfig.ps1"
 
 #endregion
 # ===========================================================
 
+# Import modules
+. "$Script:PSRoot\Scripts\FileUtils\Select-Files.ps1" # TODO: integrate
 
 #-------------------------------------------------------
 #region     Show Help Functions

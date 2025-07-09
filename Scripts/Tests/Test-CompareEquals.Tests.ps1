@@ -2,13 +2,47 @@
 # Compare-Equals.Tests.ps1
 #======================================================================================
 
+# ===========================================================================================
+#region       Ensure PSRoot and Dot Source Core Globals
+# ===========================================================================================
+function InitializeCore {
+    if (-not $Script:PSRoot) {
+        $Script:PSRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
+        Write-Host "Set Script:PSRoot = $Script:PSRoot"
+    }
+    if (-not $Script:PSRoot) {
+        throw 'Script:PSRoot must be set by the entry-point script before using internal components.'
+    }
+
+    $Script:CliArgs = $args
+    . "$Script:PSRoot\Scripts\Initialize-CoreConfig.ps1"
+    
+    # Test_SelectFiles.Tests.ps1
+    $Script:scriptUnderTest = "$Script:PSRoot\Scripts\DevUtils\Compare-Utils.ps1"
+}
+
+#endregion
+# ===========================================================================================
 
 
 Describe "Compare-Equals" {
 
     BeforeAll {
-        . "$env:PowerShellScripts\DevUtils\Format-Utils.ps1"
-        . "$env:PowerShellScripts\DevUtils\Compare-Utils.ps1"
+        # InitializeCore
+        if (-not $Script:PSRoot) {
+            $Script:PSRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
+            Write-Host "Set Script:PSRoot = $Script:PSRoot"
+        }
+        if (-not $Script:PSRoot) {
+            throw 'Script:PSRoot must be set by the entry-point script before using internal components.'
+        }
+
+        $Script:CliArgs = $args
+        . "$Script:PSRoot\Scripts\Initialize-CoreConfig.ps1"
+    
+        # Test_SelectFiles.Tests.ps1
+        $Script:scriptUnderTest = "$Script:PSRoot\Scripts\DevUtils\Compare-Utils.ps1"
+        . "$Script:scriptUnderTest"
     }
 
     Context "Null and primitive values" {

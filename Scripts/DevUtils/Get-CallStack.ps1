@@ -1,12 +1,32 @@
-Write-Host "Loading CallStack.ps1"
+#Write-Host "Loading CallStack.ps1"
 
-if ($Global:PSRoot) {
-    . "$Global:PSRoot/Scripts/DevUtils/Format-Utils.ps1"
+# ===========================================================================================
+#region       Ensure PSRoot and Dot Source Core Globals
+# ===========================================================================================
+
+if (-not $Script:PSRoot) {
+    $Script:PSRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
+    Write-Host "Set Script:PSRoot = $Script:PSRoot"
+    
+    . "$Script:PSRoot\Scripts\Initialize-CoreConfig.ps1"
 }
-else {
-    Write-Error "Global:PSRoot not found, resorting to PSScriptRoot."
-    . "$PSScriptRoot/../DevUtils/Format-Utils.ps1"
+if (-not $Script:PSRoot) {
+    throw "Script:PSRoot must be set by the entry-point script before using internal components."
 }
+
+if (-not $Script:CliArgs -and $args) {
+    $Script:CliArgs = $args
+}
+
+    
+if (-not $Script:Included_Get_Callstack_Utils_Block) { 
+    $Script:Included_Get_Callstack_Utils_Block = $true
+
+    . "$Script:PSRoot\Scripts\DevUtils\Format-Utils.ps1"
+}
+
+#endregion
+# ===========================================================================================
 
 #=========================
 #region     CallStack.ps1
@@ -42,7 +62,8 @@ else {
 #=========================
 if (-not $script:CallStack_MaxDepth)     { $script:CallStack_MaxDepth     = 10 }
 if (-not $script:CallStack_MaxFcnWidth)  { $script:CallStack_MaxFcnWidth  = 40 }
-if (-not $script:CallStack_MaxFileWidth) { $script:CallStack_MaxFileWidth = 50 }
+if (-not $script:CallStack_MaxPathWidth) { $script:CallStack_MaxPathWidth = 50 }
+if (-not $script:CallStack_MaxLocWidth)  { $script:CallStack_MaxLocWidth  = 50 }
 if (-not $script:CallStack_MaxLineWidth) { $script:CallStack_MaxLineWidth = 6  }
 
 
@@ -61,14 +82,14 @@ if (-not $script:CallStack_MaxLineWidth) { $script:CallStack_MaxLineWidth = 6  }
 .PARAMETER MaxFcnWidth
     The maximum width for the function name column.
 
-.PARAMETER MaxFileWidth
+.PARAMETER MaxLocWidth
     The maximum width for the file name column.
 
 .PARAMETER MaxLineWidth
     The maximum width for the line number column.
 
 .EXAMPLE
-    Set-CallStackMax -MaxDepth 20 -MaxFcnWidth 50 -MaxFileWidth 60 -MaxLineWidth 10
+    Set-CallStackMax -MaxDepth 20 -MaxFcnWidth 50 -MaxLocWidth 60 -MaxLineWidth 10
 #>
 # ========================================
 function Set-CallStackMax {
@@ -76,14 +97,16 @@ function Set-CallStackMax {
     param(
         [int]$MaxDepth,
         [int]$MaxFcnWidth,
-        [int]$MaxFileWidth,
+        [int]$MaxPathWidth,
+        [int]$MaxLocWidth,
         [int]$MaxLineWidth
     )
 
-    if ($PSBoundParameters.ContainsKey('MaxDepth'))     { $script:CallStack_MaxDepth     = $MaxDepth }
-    if ($PSBoundParameters.ContainsKey('MaxFcnWidth'))  { $script:CallStack_MaxFcnWidth  = $MaxFcnWidth }
-    if ($PSBoundParameters.ContainsKey('MaxFileWidth')) { $script:CallStack_MaxFileWidth = $MaxFileWidth }
-    if ($PSBoundParameters.ContainsKey('MaxLineWidth')) { $script:CallStack_MaxLineWidth = $MaxLineWidth }
+    if ($PSBoundParameters.ContainsKey('MaxDepth'))     { $script:CallStack_MaxDepth      = $MaxDepth }
+    if ($PSBoundParameters.ContainsKey('MaxPathWidth')) { $script:CallStack_MaxPathWidth  = $MaxPathWidth }
+    if ($PSBoundParameters.ContainsKey('MaxFcnWidth'))  { $script:CallStack_MaxFcnWidth   = $MaxFcnWidth }
+    if ($PSBoundParameters.ContainsKey('MaxLocWidth'))  { $script:CallStack_MaxLocWidth   = $MaxLocWidth }
+    if ($PSBoundParameters.ContainsKey('MaxLineWidth')) { $script:CallStack_MaxLineWidth  = $MaxLineWidth }
 }
 
 # ========================================
@@ -106,7 +129,8 @@ function Get-CallStackMax {
     $valueObj = [PSCustomObject]@{
         MaxDepth     = $script:CallStack_MaxDepth
         MaxFcnWidth  = $script:CallStack_MaxFcnWidth
-        MaxFileWidth = $script:CallStack_MaxFileWidth
+        MaxPathWidth = $script:CallStack_MaxPathWidth
+        MaxLocWidth  = $script:CallStack_MaxLocWidth
         MaxLineWidth = $script:CallStack_MaxLineWidth
     }
     return $valueObj
@@ -140,7 +164,7 @@ function Get-CallStackMax {
     [5] <ScriptBlock>                                                    1     <No file>
 
 .OUTPUT
-    PSCustomObject with properties: MaxDepth, MaxFcnWidth, MaxFileWidth, MaxLineWidth
+    PSCustomObject with properties: MaxDepth, MaxFcnWidth, MaxLocWidth, MaxLineWidth
 #>
 # ========================================
 function Get-CallStack {
@@ -162,11 +186,13 @@ function Get-StackFrame {
     [CmdletBinding()]
     param(
         [int]$Index,
-        [int]$Skip = 0
+        [int]$Skip = 0,
+        [int]$Depth = $script:CallStack_MaxDepth
+
     )
 
     $Skip += 1
-    $frames = _GetCallStack -Depth 0 -Skip $Skip
+    $frames = _GetCallStack -Depth $Depth -Skip $Skip
     $frame = if ($Index -ge 0 -and $Index -lt $frames.Count) { $frames[$Index] } else { $null }
     return $frame
 }
@@ -225,6 +251,7 @@ function _GetCallStack {
     )
 
     $Skip += 1
+    $stack = Get-PSCallStack
     $stack = Get-PSCallStack | Select-Object -Skip $Skip
 
     if ($Depth -gt 0 -and $stack.Count -gt $Depth) {
@@ -234,10 +261,10 @@ function _GetCallStack {
 
         $ellipsis = [PSCustomObject]@{
             FunctionName     = " "
-            ScriptName       = "($($stack.Count - $Depth) frame(s) skipped) "
-            ScriptLineNumber = " "
-            Location         = " "
-        }
+            Location         = "($($stack.Count - $Depth) frame(s) skipped) "
+            ScriptName       = " " #"($($stack.Count - $Depth) frame(s) skipped) "
+            #ScriptLineNumber = " "
+         }
 
         $stack = @($top + $ellipsis + $bottom)
     }
@@ -257,40 +284,67 @@ function _FormatCallStack {
 
     # Calculate maximum actual widths for each column
     $maxFcn  = ($Frames | Where-Object { $_.FunctionName -notlike "... (*) frame(s) skipped) ..." } | ForEach-Object { $_.FunctionName.Length } | Measure-Object -Maximum).Maximum
-    $maxFile = ($Frames | Where-Object { $_.ScriptName   -ne "" } | ForEach-Object { $_.ScriptName.Length } | Measure-Object -Maximum).Maximum
-    $maxLine = ($Frames | Where-Object { $null -ne $_.ScriptLineNumber } | ForEach-Object { $_.ScriptLineNumber.ToString().Length } | Measure-Object -Maximum).Maximum
+    $maxLoc  = ($Frames | Where-Object { $_.Location -ne "" } | ForEach-Object { $_.Location.Length } | Measure-Object -Maximum).Maximum
+    $maxPath = ($Frames | Where-Object { $_.ScriptName   -ne "" } | ForEach-Object { $_.ScriptName.Length } | Measure-Object -Maximum).Maximum
+    #$maxLine = ($Frames | Where-Object { $null -ne $_.ScriptLineNumber } | ForEach-Object { $_.ScriptLineNumber.ToString().Length } | Measure-Object -Maximum).Maximum
 
     $widthFcn  = if ($script:CallStack_MaxFcnWidth  -gt 0) { [Math]::Min($maxFcn,  $script:CallStack_MaxFcnWidth)  } else { $maxFcn }
-    $widthFile = if ($script:CallStack_MaxFileWidth -gt 0) { [Math]::Min($maxFile, $script:CallStack_MaxFileWidth) } else { $maxFile }
-    $widthLine = if ($script:CallStack_MaxLineWidth -gt 0) { [Math]::Min($maxLine, $script:CallStack_MaxLineWidth) } else { $maxLine }
-
+    $widthLoc  = if ($script:CallStack_MaxLocWidth -gt 0) { [Math]::Min($maxLoc, $script:CallStack_MaxLocWidth) } else { $maxLoc }
+    $widthPath  = if ($script:CallStack_MaxPathWidth  -gt 0) { [Math]::Min($maxPath,  $script:CallStack_MaxPathWidth)  } else { $maxPath }
+    #$widthLine = if ($script:CallStack_MaxLineWidth -gt 0) { [Math]::Min($maxLine, $script:CallStack_MaxLineWidth) } else { $maxLine }
+ 
     $lines = @()
 
     # Add column headers
-    $headerFcn    = Get-PaddedText -Text "Function" -Width $widthFcn -Align "left"
-    $headerScript = Get-PaddedText -Text "Script"   -Width $widthFile
-    $headerLine   = Get-PaddedText -Text "Line"     -Width $widthLine #-Align "center"
-    $lines += "[#] $headerFcn $headerScript $headerLine Location"
+    $padFcn    = Get-PaddedText -Text "Function"  -Width $widthFcn
+    $padLoc    = Get-PaddedText -Text "Location"  -Width $widthLoc
+    $padScript = Get-PaddedText -Text "Full Path" -Width $widthPath
+    #$padLine   = Get-PaddedText -Text $line     -Width $widthLine   -Align "center"
+    $lines += "[#] $padFcn    $padLoc    $padScript"
 
     for ($i = 0; $i -lt $Frames.Count; $i++) {
         $frame = $Frames[$i]
         if ($frame) {
             $fcn    = if ($null -ne $frame.FunctionName)        { $frame.FunctionName }     else { " " }
+            $file   = if ($null -ne $frame.Location)            { $frame.Location }         else { " " }
             $script = if ($null -ne $frame.ScriptName)          { $frame.ScriptName }       else { " " }
-            $line   = if ($null -ne $frame.ScriptLineNumber)    { $frame.ScriptLineNumber } else { " " }
-            $loc    = if ($null -ne $frame.Location)            { $frame.Location }         else { " " }
+            #$line   = if ($null -ne $frame.ScriptLineNumber)    { $frame.ScriptLineNumber } else { " " }
 
-            $padFcn    = Get-PaddedText -Text $fcn      -Width $widthFcn
-            $padScript = Get-PaddedText -Text $script   -Width $widthFile
-            $padLine   = Get-PaddedText -Text $line     -Width $widthLine   -Align "center"
-            $lines += "[$i] $padFcn $padScript $padLine $($loc)"
+            $padFcn     = Get-PaddedText -Text $fcn      -Width $widthFcn
+            $padLoc     = Get-PaddedText -Text $file     -Width $widthLoc
+            $padScript  = Get-PaddedText -Text $script   -Width $widthPath
+            #$padLine   = Get-PaddedText -Text $line     -Width $widthLine   -Align "center"
+            $lines += "[$i] $padFcn    $padLoc    $padScript"
         }
     }
     $callStackStr = ($lines -join "`n")
     return $callStackStr
 }
 
+# ==========================================================================================
+#region      Execution Guard / Main Entrypoint
+# ==========================================================================================
 
+if ($MyInvocation.InvocationName -eq '.') {
+    # Dot-sourced – do nothing, just define functions/aliases
+    Write-Debug 'Script dot-sourced; skipping main execution.'
+    return
+}
+
+if ($MyInvocation.MyCommand.Path -eq $PSCommandPath) {
+    # Direct execution
+    $baseName = [System.IO.Path]::GetFileNameWithoutExtension($MyInvocation.MyCommand.Path)
+    if (Get-Command $baseName -CommandType Function -ErrorAction SilentlyContinue) {
+        Log -Info "$baseName $(Format-ToString($Global:RemainingArgs))"
+        (& $baseName @Global:RemainingArgs)
+    } else {
+        Log -Err "No function named '$baseName' found to match script entry point."
+    }
+} else {
+    Log -Warn "Unexpected execution context: $($MyInvocation.MyCommand.Path)"
+}
+#endregion   Execution Guard / Main Entrypoint
+# ==========================================================================================
 
 #endregion
 

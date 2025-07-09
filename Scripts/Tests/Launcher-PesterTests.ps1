@@ -1,43 +1,37 @@
 # Launch-PesterTests.ps1
 # Runs all relevant Pester test files with optional breakpoints
-if (-not $Global:PSRoot) {
-    $Global:PSRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
-    Write-Debug "Set Global:PSRoot = $Global:PSRoot"
+if (-not $Script:PSRoot) {
+    $Script:PSRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
+    Write-Debug "Set Script:PSRoot = $Script:PSRoot"
 }
-if (-not $Global:PSRoot) {
-    throw "Global:PSRoot must be set by the entry-point script before using internal components."
+if (-not $Script:PSRoot) {
+    throw "Script:PSRoot must be set by the entry-point script before using internal components."
 }
-if (-not $Global:CliArgs) {
-    $Global:CliArgs = $args
+if (-not $Script:CliArgs) {
+    $Script:CliArgs = $args
 }
 
-. "$Global:PSRoot\Scripts\Initialize-CoreConfig.ps1"
+. "$Script:PSRoot\Scripts\Initialize-CoreConfig.ps1"
 
 #. "$env:PowerShellScripts/DevUtils/Logging.ps1"
-Import-Module "$Global:PSRoot\Modules\VirtualFolderFileUtils\VirtualFolderFileUtils.psd1" -Force
+#Import-Module "$Script:PSRoot\Modules\VirtualFolderFileUtils\VirtualFolderFileUtils.psd1" -Force
 
 Set-DryRun $false
-Set-LogLevel $LogAll
+#Set-LogLevel $LogAll
 #Set-LogLevel $LogDebug
 
-$test1 = "$Global:PSRoot\Scripts\Tests\Test-CompareSortedCollections.Tests.ps1"
-$test2 = "$Global:PSRoot\Scripts\Tests\Test-CompareSpecObjects.Tests.ps1"
-$test3 = "$Global:PSRoot\Scripts\Tests\Test-ExportDirUtils.Tests.ps1"
-$test4 = "$Global:PSRoot\Scripts\Tests\Test-FormatUtils.Tests.ps1"
-$test5 = "$Global:PSRoot\Scripts\Tests\Test-NewItemNameWithDate.Tests.ps1"
-$test6 = "$Global:PSRoot\Scripts\Tests\Test-CompareEquals.Tests.ps1"
-$test7 = "$Global:PSRoot\Scripts\Tests\Test-CallStack.Tests.ps1"
-$test8 = "$Global:PSRoot\Scripts\Tests\Test-GetOutlookItemType.Tests.ps1"
-$test9 = "$Global:PSRoot\Scripts\Tests\Test-DateTimeUtils.Tests.ps1"
-$test10 = "$Global:PSRoot\Scripts\Tests\Test-Select-Files.Tests.ps1"
-$test11 = "$Global:PSRoot\Scripts\Tests\Test-Get-PaddedText.Tests.ps1"
-$test12 = "$Global:PSRoot\Scripts\Tests\Test-Move-Files.Tests.ps1"
-$test13 = "$Global:PSRoot\Scripts\Tests\Test-Rename-Files.Tests.ps1"
-$test14 = "$Global:PSRoot\Scripts\Tests\Test-Rename-FileExtension.Tests.ps1"
-$test15 = "$Global:PSRoot\Scripts\Tests\Test-SetDir-BaseDirsUtils.Tests.ps1"
-$test16 = "$Global:PSRoot\Scripts\Tests\Test-SetDir-KeywordDirsUtils.Tests.ps1"
-$test17 = "$Global:PSRoot\Scripts\Tests\Test-Set-Dir.Tests.ps1"
-$test18 = "$Global:PSRoot\Scripts\Tests\Test-Register-GoDirCompleter.Tests.ps1"
+$test01 = "$Script:PSRoot\Scripts\Tests\Test-CompareSortedCollections.Tests.ps1"
+$test02 = "$Script:PSRoot\Scripts\Tests\Test-CompareSpecObjects.Tests.ps1"
+$test03 = "$Script:PSRoot\Scripts\Tests\Test-ExportDirUtils.Tests.ps1"
+$test04 = "$Script:PSRoot\Scripts\Tests\Test-FormatUtils.Tests.ps1"
+$test05 = "$Script:PSRoot\Scripts\Tests\Test-NewItemNameWithDate.Tests.ps1"
+$test06 = "$Script:PSRoot\Scripts\Tests\Test-CompareEquals.Tests.ps1"
+$test07 = "$Script:PSRoot\Scripts\Tests\Test-CallStack.Tests.ps1"
+$test08 = "$Script:PSRoot\Scripts\Tests\Test-GetOutlookItemType.Tests.ps1"
+$test09 = "$Script:PSRoot\Scripts\Tests\Test-DateTimeUtils.Tests.ps1"
+$test10 = "$Script:PSRoot\Scripts\Tests\Test-Logging.Tests.ps1"
+$test11 = "$Script:PSRoot\Scripts\Tests\Test-SelectFiles.Tests.ps1"
+
 
 # Optional breakpoints
 # Set-PSBreakpoint -Script "$PSScriptRoot\..\DevUtils\Compare-Utils.ps1" -Line 25
@@ -46,21 +40,8 @@ $test18 = "$Global:PSRoot\Scripts\Tests\Test-Register-GoDirCompleter.Tests.ps1"
 #Set-PSBreakpoint -Command '&'
 
 $conf = [PesterConfiguration]::Default
-$conf.Run.Path = @(
-    $test1, $test2, $test3, $test4, $test5, $test6, $test7, $test8, $test9,
-    $test10, $test11, $test12, $test13, $test14, $test15, $test16, $test17, $test18
-)
-#$conf.Run.Path = @($test1, $test2, $test3, $test4, $test5, $test6)
-#$conf.Run.Path = @($test4, $test6)
-#$conf.Run.Path = @($test1)
-#$conf.Run.Path = @($test2)
-#$conf.Run.Path = @($test3)
-#$conf.Run.Path = @($test4)
-#$conf.Run.Path = @($test5)
-#$conf.Run.Path = @($test6)
-#$conf.Run.Path = @($test7)
-#$conf.Run.Path = @($test8)
-#$conf.Run.Path = @($test9)
+$conf.Run.Path = @($test01, $test02, $test03, $test04, $test05, $test06, $test07, $test08, $test09, $test10, $test11)
+#$conf.Run.Path = @($test01, $test02, $test03, $test04, $test05, $test06)
 
 $conf.Output.Verbosity = 'Detailed'
 

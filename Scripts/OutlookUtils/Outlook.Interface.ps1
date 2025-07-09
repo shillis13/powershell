@@ -38,19 +38,19 @@ enum OutlookItemType {
 #region       Ensure PSRoot and Dot Source Core Globals
 # ===========================================================================================
 
-if (-not $Global:PSRoot) {
-    $Global:PSRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
-    Write-Host "Set Global:PSRoot = $Global:PSRoot"
+if (-not $Script:PSRoot) {
+    $Script:PSRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
+    Write-Host "Set Script:PSRoot = $Script:PSRoot"
 }
-if (-not $Global:PSRoot) {
-    throw "Global:PSRoot must be set by the entry-point script before using internal components."
-}
-
-if (-not $Global:CliArgs) {
-    $Global:CliArgs = $args
+if (-not $Script:PSRoot) {
+    throw "Script:PSRoot must be set by the entry-point script before using internal components."
 }
 
-. "$Global:PSRoot\Scripts\Initialize-CoreConfig.ps1"
+if (-not $Script:CliArgs) {
+    $Script:CliArgs = $args
+}
+
+. "$Script:PSRoot\Scripts\Initialize-CoreConfig.ps1"
 
 #endregion
 # ===========================================================================================

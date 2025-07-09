@@ -2,65 +2,53 @@
 #region       Ensure PSRoot and Dot Source Core Globals
 # ===========================================================================================
 
-if (-not $Global:PSRoot) {
-    $Global:PSRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
-    Write-Host "Set Global:PSRoot = $Global:PSRoot"
+if (-not $Script:PSRoot) {
+    $Script:PSRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
+    Write-Host "Set Script:PSRoot = $Script:PSRoot"
 }
-if (-not $Global:PSRoot) {
-    throw "Global:PSRoot must be set by the entry-point script before using internal components."
+if (-not $Script:PSRoot) {
+    throw "Script:PSRoot must be set by the entry-point script before using internal components."
 }
 
-#if (-not $Global:CliArgs) {
-    $Global:CliArgs = $args
+#if (-not $Script:CliArgs) {
+    $Script:CliArgs = $args
 #}
 
-. "$Global:PSRoot\Scripts\Initialize-CoreConfig.ps1"
-
-
-# Import modules
-. "$ENV:PowerShellScripts\FileUtils\Select-Files.ps1"
+. "$Script:PSRoot\Scripts\Initialize-CoreConfig.ps1"
 
 #endregion
-# ==================================================
+# ===========================================================================================
 
 
-# ==================================================
-#region               Function: Backup-Files
 <#
 .SYNOPSIS
     Archives files based on various options.
 
 .DESCRIPTION
-    This script uses SelectFiles.ps1 to locate files in the source directory. It
-    orders them by date, skipping the newest file, and moves the remainder to the
-    archive directory.
+    This script uses SelectFiles.ps1 to find files in the specified source directory, orders them by date-time, and returns the files in ascending order except for the last file (which would be the newest file). It then moves those files to the specified archive directory.
 
 .PARAMETER SrcPath
     The source directory to search for files.
 
 .PARAMETER DestPath
-    (Optional) Destination archive directory. Defaults to $SrcPath\Archive.
+    (Optional) The archive directory to move files to. Defaults to $SrcPath\Archive.
 
-.PARAMETER UseDateInFilename
-    (Optional) Use dates from the filename when ordering.
+.PARAMETER DontUseDateInFilename
+    (Optional) Switch to not use date in the filename for ordering. Default is false.
 
 .PARAMETER KeepNVersions
-    (Optional) Number of most recent files to keep. Defaults to 1.
-
-.PARAMETER Exec
-    Switch to execute moves; overrides dry run.
-
-.OUTPUTS
-    None
+    (Optional) The number of most recent files to keep in the source directory. Default is 1.
 
 .EXAMPLE
-    Backup-Files -SrcPath "C:\Files" -DestPath "C:\Archive" -UseDateInFilename -KeepNVersions 1
-
-.NOTES
-    Relies on Select-Files.ps1 and Logging utilities.
+    .\ArchiveFiles.ps1 -SrcPath "C:\Files" -DestPath "C:\Archive" -DontUseDateInFilename -KeepNVersions 1
 #>
+
+# Imports
+. "$ENV:PowerShellScripts\FileUtils\Select-Files.ps1"
+
+#==================================================================================
+#region     Function: Backup-Files
 function Backup-Files {
-    [CmdletBinding()]
     param (
         [Parameter(Mandatory = $true)]
         [string]$SrcPath,
@@ -100,7 +88,8 @@ function Backup-Files {
 
     #Log -Always "Select-Files -Dir $SrcPath -DateSource $DateSource -OrderBy Date -Order ASC -LastN $KeepNVersions -Inverse"
     #$fileList  = Select-Files -Dir $SrcPath -DateSource $DateSource -OrderBy Date -Order ASC -LastN $KeepNVersions -Inverse
-    Log -Dbg ("Select-Files " + (Format-HashTable -Table $argList))
+    Log -Dbg ("Select-Files " + (Format-ToString -Obj $argList))
+    $fileList = @() # Ensure it is empty
     $fileList = Select-Files @argList
 
     if ($fileList) {
@@ -130,7 +119,7 @@ function Backup-Files {
     }
 }
 #endregion
-# ==================================================
+#==================================================================================
 
 
 # ==========================================================================================

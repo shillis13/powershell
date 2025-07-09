@@ -1,31 +1,46 @@
+# Test-DateTimeUtils.Tests.ps1
+
 # ===========================================================================================
-#region     Test-DateTimeUtils.Tests.ps1
-<#
-.SYNOPSIS
-    Pester tests for DateTimeUtils.ps1 functions.
-#>
+#region       Ensure PSRoot and Dot Source Core Globals
 # ===========================================================================================
-# Ensure DevUtils is sourced before running these tests.
-$here = Split-Path -Parent $MyInvocation.MyCommand.Path
-. "$here\..\DevUtils\CallStack.ps1"
 
-if (-not $Global:PSRoot) {
-    $Global:PSRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
-    Write-Host "Set Global:PSRoot = $Global:PSRoot"
+function InitializeCore {
+    if (-not $Script:PSRoot) {
+        $Script:PSRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
+        Write-Host "Set Script:PSRoot = $Script:PSRoot"
+    }
+    if (-not $Script:PSRoot) {
+        throw 'Script:PSRoot must be set by the entry-point script before using internal components.'
+    }
+
+    $Script:CliArgs = $args
+    . "$Script:PSRoot\Scripts\Initialize-CoreConfig.ps1"
+
+    $Script:scriptUnderTest = "$Script:PSRoot\Scripts\DateTimeUtils\DateTime-Utils.ps1"
 }
-if (-not $Global:PSRoot) {
-    throw "Global:PSRoot must be set by the entry-point script before using internal components."
-}
 
-#if (-not $Global:CliArgs) {
-    $Global:CliArgs = $args
-#}
 
-Describe "DateTimeUtils.ps1" {
+
+#endregion
+# ===========================================================================================
+
+Describe "DateTime-Utils.ps1" {
 
     BeforeAll {
-        # Ensure DateTimeUtils is sourced before running these tests.
-        . "$Global:PSRoot\Scripts\DateTimeUtils\DateTimeUtils.ps1"
+        # InitializeCore
+        if (-not $Script:PSRoot) {
+            $Script:PSRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
+            Write-Host "Set Script:PSRoot = $Script:PSRoot"
+        }
+        if (-not $Script:PSRoot) {
+            throw 'Script:PSRoot must be set by the entry-point script before using internal components.'
+        }
+
+        $Script:CliArgs = $args
+        . "$Script:PSRoot\Scripts\Initialize-CoreConfig.ps1"
+
+        $Script:scriptUnderTest = "$Script:PSRoot\Scripts\DateTimeUtils\DateTime-Utils.ps1"
+        . "$Script:scriptUnderTest"
     }
 
     Context "ConvertTo-DateTime" {
@@ -102,99 +117,151 @@ Describe "DateTimeUtils.ps1" {
         It "Should find datetime substrings in input string" {
             $result = Find-DateTimeSubstrings -InputString "The event is scheduled for 2025-04-26T14:30:00 and 04/26/2025."
             $result | Should -HaveCount 2
-            $result | Should -Contain @{
-                Type = "datetime"
+
+            $customObj1 = New-Object PSObject -Property @{
                 Format = "yyyy-MM-ddTHH:mm:ss"
-                Substring = "2025-04-26T14:30:00"
                 Index = 27
+                Substring = "2025-04-26T14:30:00"
+                Type = "datetime"
             }
-            $result | Should -Contain @{
-                Type = "date"
+            $customObj2 = New-Object PSObject -Property @{
                 Format = "MM/dd/yyyy"
-                Substring = "04/26/2025"
                 Index = 51
+                Substring = "04/26/2025"
+                Type = "date"
             }
+
+            $resultStr1 = Format-ToString -Obj $result[0]
+            $expectedStr1 = Format-ToString -Obj $customObj1
+
+            $resultStr2 = Format-ToString -Obj $result[1]
+            $expectedStr2 = Format-ToString -Obj $customObj2
+
+            $resultStr1 | Should -BeExactly $expectedStr1
+            $resultStr2 | Should -BeExactly $expectedStr2
         }
 
         It "Should find various date patterns in input string" {
             $result = Find-DateTimeSubstrings -InputString "Dates: 2025-04-26, 04/26/2025, 26/04/2025, 20250426, 2025-04, 04/2025, 2025."
             $result | Should -HaveCount 7
-            $result | Should -Contain @{
-                Type = "date"
+            $resultStr = Format-ToString -Obj $result
+            $expectedValues = @()
+
+            $resultStr | Should -Not -BeNullOrEmpty
+            $resultStr | Should -Not -Be ""
+
+            $customObj = New-Object PSObject -Property @{
                 Format = "yyyy-MM-dd"
-                Substring = "2025-04-26"
                 Index = 7
-            }
-            $result | Should -Contain @{
+                Substring = "2025-04-26"
                 Type = "date"
+             }
+            $expectedValues += (Format-ToString -Obj $customObj)
+
+            $customObj = New-Object PSObject -Property @{
                 Format = "MM/dd/yyyy"
+                Index = 19
                 Substring = "04/26/2025"
-                Index = 18
-            }
-            $result | Should -Contain @{
                 Type = "date"
+            }
+            $expectedValues += (Format-ToString -Obj $customObj)
+
+            $customObj = New-Object PSObject -Property @{
                 Format = "dd/MM/yyyy"
+                Index = 31
                 Substring = "26/04/2025"
-                Index = 29
-            }
-            $result | Should -Contain @{
                 Type = "date"
+            }
+            $expectedValues += (Format-ToString -Obj $customObj)
+
+            $customObj = New-Object PSObject -Property @{
                 Format = "yyyyMMdd"
+                Index = 43
                 Substring = "20250426"
-                Index = 40
-            }
-            $result | Should -Contain @{
                 Type = "date"
+            }
+            $expectedValues += (Format-ToString -Obj $customObj)
+
+            $customObj = New-Object PSObject -Property  @{
                 Format = "yyyy-MM"
+                Index = 53
                 Substring = "2025-04"
-                Index = 49
-            }
-            $result | Should -Contain @{
                 Type = "date"
+            }
+            $expectedValues += (Format-ToString -Obj $customObj)
+
+            $customObj = New-Object PSObject -Property  @{
                 Format = "MM/yyyy"
+                Index = 62
                 Substring = "04/2025"
-                Index = 57
-            }
-            $result | Should -Contain @{
                 Type = "date"
+            }
+            $expectedValues += (Format-ToString -Obj $customObj)
+
+            $customObj = New-Object PSObject -Property @{
                 Format = "yyyy"
+                Index = 71
                 Substring = "2025"
-                Index = 65
+                Type = "date"
+            }
+            $expectedValues += (Format-ToString -Obj $customObj)
+
+            foreach ($expectedStr in $expectedValues) {
+                $resultStr.Contains($expectedStr) | Should -Be $true
+                $resultStr | Should -Match $expectedStr
             }
         }
 
         It "Should find various time patterns in input string" {
             $result = Find-DateTimeSubstrings -InputString "Times: 14:30:00, 14:30, 2:30 PM, 2:30:00 PM."
             $result | Should -HaveCount 4
-            $result | Should -Contain @{
-                Type = "time"
+            $resultStr = Format-ToString -Obj $result
+            $expectedValues = @()
+
+            $resultStr | Should -Not -BeNullOrEmpty
+            $resultStr | Should -Not -Be ""
+
+
+            $customObj = New-Object PSObject -Property @{
                 Format = "HH:mm:ss"
-                Substring = "14:30:00"
                 Index = 7
-            }
-            $result | Should -Contain @{
+                Substring = "14:30:00"
                 Type = "time"
+            }
+            $expectedValues += (Format-ToString -Obj $customObj)
+
+            $customObj = New-Object PSObject -Property @{
                 Format = "HH:mm"
-                Substring = "14:30"
                 Index = 17
-            }
-            $result | Should -Contain @{
+                Substring = "14:30"
                 Type = "time"
-                Format = "h:mm tt"
-                Substring = "2:30 PM"
+            }
+            $expectedValues += (Format-ToString -Obj $customObj)
+
+            $customObj = New-Object PSObject -Property @{
+                Format = "hh:mm tt"
                 Index = 24
-            }
-            $result | Should -Contain @{
+                Substring = "2:30 PM"
                 Type = "time"
-                Format = "h:mm:ss tt"
-                Substring = "2:30:00 PM"
+            }
+            $expectedValues += (Format-ToString -Obj $customObj)
+
+            $customObj = New-Object PSObject -Property @{
+                Format = "hh:mm:ss tt"
                 Index = 33
+                Substring = "2:30:00 PM"
+                Type = "time"
+            }
+            $expectedValues += (Format-ToString -Obj $customObj)
+
+            foreach ($expectedStr in $expectedValues) {
+                $resultStr | Should -Match $expectedStr
             }
         }
 
         It "Should return empty array for input string without datetime substrings" {
             $result = Find-DateTimeSubstrings -InputString "No dates here."
-            $result | Should -BeEmpty
+            $result | Should -BeNullOrEmpty
         }
     }
 
@@ -206,26 +273,63 @@ Describe "DateTimeUtils.ps1" {
             $result.Value | Should -Be ([datetime]"2025-04-26T14:30:00")
         }
 
+        It "Should find and convert the first datetime substring from the back of the input string" {
+            $result = Find-DateValue -StringWithDate "The event is scheduled for 2025-04-26T14:30:00 and 04/26/2025." -FromTheBack
+            $result.Substring | Should -Be "04/26/2025"
+            $result.Format | Should -Be "MM/dd/yyyy"
+            $result.Value | Should -Be ([datetime]"2025-04-26T00:00:00")
+        }
+
+        It "Should skip the first match and find the second datetime substring in input string" {
+            $result = Find-DateValue -StringWithDate "The event is scheduled for 2025-04-26T14:30:00 and 04/26/2025." -Skip 1
+            $result.Substring | Should -Be "04/26/2025"
+            $result.Format | Should -Be "MM/dd/yyyy"
+            $result.Value | Should -Be ([datetime]"2025-04-26T00:00:00")
+        }
+
+        It "Should return the count of datetime substrings in input string" {
+            $result = Find-DateValue -StringWithDate "The event is scheduled for 2025-04-26T14:30:00 and 04/26/2025." -Count
+            $result | Should -Be 2
+        }
+
         It "Should return null for input string without datetime substrings" {
             $result = Find-DateValue -StringWithDate "No dates here."
             $result | Should -BeNullOrEmpty
         }
     }
 
-    Context "Remove-TrailingDateFromName" {
-        It "Should remove trailing date from name" {
-            $result = Remove-TrailingDateFromName -Name "Report 2025-04-26"
+    Context "Remove-DateTimesFromString" {
+        It "Should remove datetime substrings from the input string" {
+            $result = Remove-DateTimesFromString -Name "Report 2025-04-26 14:30:00"
             $result | Should -Be "Report"
 
-            $result = Remove-TrailingDateFromName -Name "Report (2025)"
-            $result | Should -Be "Report"
+            $result = Remove-DateTimesFromString -Name "Event (12/05/2025)"
+            $result | Should -Be "Event"
 
-            $result = Remove-TrailingDateFromName -Name "Report 04-26-2025"
-            $result | Should -Be "Report"
+            $result = Remove-DateTimesFromString -Name "Meeting at 10:00 AM"
+            $result | Should -Be "Meeting at"
+
+            $result = Remove-DateTimesFromString -Name "Document 2025-07-05 at 12:00:00 Sharp" 
+            $result | Should -Be "Document at Sharp"
+
+            $result = Remove-DateTimesFromString -Name "Document 2025-07-05 at 12:00:00 Sharp" -RemoveCount 1
+            $result | Should -Be "Document 2025-07-05 at Sharp"
+
+            $result = Remove-DateTimesFromString -Name "Document 2025-07-05 at 12:00:00 Sharp" -RemoveFromFront -RemoveCount 1
+            $result | Should -Be "Document at 12:00:00 Sharp"
+
+            $result = Remove-DateTimesFromString -Name "Document 2025-07-05 12:00:00" -RemoveCount 1
+            $result | Should -Be "Document"
+
+            $result = Remove-DateTimesFromString -Name "Document Date: 2025-07-05 Time: 12:00:00" -RemoveCount 1
+            $result | Should -Be "Document Date: 2025-07-05 Time:"
+
+            $result = Remove-DateTimesFromString -Name "Event (12/05/2025) Poker"
+            $result | Should -Be "Event Poker"
         }
 
-        It "Should return the same name if no trailing date is found" {
-            $result = Remove-TrailingDateFromName -Name "Report"
+        It "Should return the same name if no datetime substrings are found" {
+            $result = Remove-DateTimesFromString -Name "Report"
             $result | Should -Be "Report"
         }
     }
@@ -233,21 +337,52 @@ Describe "DateTimeUtils.ps1" {
     Context "Get-DateTimePatterns" {
         It "Should return date patterns when -Date is specified" {
             $result = Get-DateTimePatterns -Date
-            $result | Should -Not -BeEmpty
-            $result | Should -Contain @{ format = "yyyy-MM-dd"; regex = "\d{4}-\d{2}-\d{2}" }
+            $result | Should -Not -BeNullOrEmpty
+            $expected = @{ format = "yyyy-MM-dd"; type = "date"; regex = "\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])" }
+            $expectedFound = $result | Where-Object {
+                $_.format -eq $expected.format -and
+                $_.regex -eq $expected.regex
+            }
+            #$result | Should -Contain $expected
+            $expectedFound | Should -Not -BeNullOrEmpty
         }
 
         It "Should return time patterns when -Time is specified" {
             $result = Get-DateTimePatterns -Time
-            $result | Should -Not -BeEmpty
-            $result | Should -Contain @{ format = "HH:mm:ss"; regex = "\d{2}:\d{2}:\d{2}" }
+            $result | Should -Not -BeNullOrEmpty
+            $expected = @{ format = "HH:mm:ss"; regex = "([01]?\d|2[0-3]):[0-5]\d:[0-5]\d" }
+
+            $expectedFound = $result | Where-Object {
+                $_.format -eq $expected.format -and
+                $_.regex -eq $expected.regex
+            }
+            #$result | Should -Contain $expected
+            $expectedFound | Should -Not -BeNullOrEmpty
         }
 
         It "Should return datetime patterns when -DateTime is specified" {
             $result = Get-DateTimePatterns -DateTime
-            $result | Should -Not -BeEmpty
-            $result | Should -Contain @{ format = "yyyy-MM-ddTHH:mm:ss"; regex = "\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}" }
+            $result | Should -Not -BeNullOrEmpty
+            $expected = @{ format = "yyyy-MM-ddTHH:mm:ss"; regex = "\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])T([01]?\d|2[0-3]):[0-5]\d:[0-5]\d" }
+
+            $expectedFound = $result | Where-Object { $_.format -eq $expected.format -and $_.regex -eq $expected.regex }
+            $expectedFound | Should -Not -BeNullOrEmpty
+        }
+
+        It "Should return all patterns when none of the switches are specified" {
+            $result = Get-DateTimePatterns
+            $result | Should -Not -BeNullOrEmpty
+            $expected = @{ format = "yyyy-MM-dd"; regex = "\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])" }
+            $expectedFound = $result | Where-Object { $_.format -eq $expected.format -and $_.regex -eq $expected.regex }
+            $expectedFound | Should -Not -BeNullOrEmpty
+
+            $expected = @{ format = "HH:mm:ss"; regex = "([01]?\d|2[0-3]):[0-5]\d:[0-5]\d" }
+            $expectedFound = $result | Where-Object { $_.format -eq $expected.format -and $_.regex -eq $expected.regex }
+            $expectedFound | Should -Not -BeNullOrEmpty
+
+            $expected = @{ format = "yyyy-MM-ddTHH:mm:ss"; regex = "\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])T([01]?\d|2[0-3]):[0-5]\d:[0-5]\d" }
+            $expectedFound = $result | Where-Object { $_.format -eq $expected.format -and $_.regex -eq $expected.regex }
+            $expectedFound | Should -Not -BeNullOrEmpty
         }
     }
 }
-#endregion

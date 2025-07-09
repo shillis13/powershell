@@ -33,8 +33,8 @@ param (
 )
 
 # Import Outlook.Interface functions (adjust path as needed)
-. "$ENV:PowerShellScripts\\DevUtils\\Logging.ps1"
-. "$ENV:PowerShellScripts\\OutlookUtils\\Outlook.Interface.ps1"
+. "$ENV:PowerShellScripts\DevUtils\Logging.ps1"
+. "$ENV:PowerShellScripts\OutlookUtils\Outlook.Interface.ps1"
 
 # Validate options
 if (-not $Folders -and -not $Items) {

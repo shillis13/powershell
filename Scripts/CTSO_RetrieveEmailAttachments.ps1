@@ -2,22 +2,22 @@
 #region       Ensure PSRoot and Dot Source Core Globals
 # ===========================================================================================
 
-if (-not $Global:PSRoot) {
-    $Global:PSRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
-    Log -Dbg "Set Global:PSRoot = $Global:PSRoot"
+if (-not $Script:PSRoot) {
+    $Script:PSRoot = (Resolve-Path "$PSScriptRoot\..").Path
+    Write-Host "Set Script:PSRoot = $Script:PSRoot"
 }
-if (-not $Global:PSRoot) {
-    throw "Global:PSRoot must be set by the entry-point script before using internal components."
-}
-
-if (-not $Global:CliArgs) {
-    $Global:CliArgs = $args
+if (-not $Script:PSRoot) {
+    throw "Script:PSRoot must be set by the entry-point script before using internal components."
 }
 
-. "$Global:PSRoot\Scripts\Initialize-CoreConfig.ps1"
-. "$Global:PSRoot\Scripts\OutlookUtils\SaveOutlookAttachments.ps1"
-. "$Global:PSRoot\Scripts\FileUtils\Rename-Files.ps1"
-. "$Global:PSRoot\Scripts\FileUtils\Backup-Files.ps1"
+if (-not $Script:CliArgs) {
+    $Script:CliArgs = $args
+}
+
+. "$Script:PSRoot\Scripts\Initialize-CoreConfig.ps1"
+. "$Script:PSRoot\Scripts\OutlookUtils\SaveOutlookAttachments.ps1"
+. "$Script:PSRoot\Scripts\FileUtils\Rename-Files.ps1"
+. "$Script:PSRoot\Scripts\FileUtils\Backup-Files.ps1"
 
 #endregion
 # ===========================================================================================
@@ -84,17 +84,17 @@ foreach ($params in $reportParams) {
     }
 
     # Call SaveOutlookAttachments.ps1
-    Write-Output "Executing SaveOutlookAttachments.ps1 with parameters: $saveOutlookParams"
-    #SaveOutlookAttachments @saveOutlookParams
+    Write-Output "Executing SaveOutlookAttachments with parameters: $(Format-ToString -Obj $saveOutlookParams)"
+    SaveOutlookAttachments @saveOutlookParams
     Write-Output ""
 
     # Call RenameFiles.ps1
-    Write-Output "Executing RenameFiles.ps1 with parameters: $renameFilesParams"
+    Write-Output "Executing Rename-Files.ps1 with parameters: $(Format-ToString -Obj $renameFilesParams)"
     Rename-And-MoveFiles @renameFilesParams
     Write-Output ""
 
     # Call BackupFilesScript.ps1
-    Write-Output "Executing BackupFilesScript.ps1 with parameters: $backupFilesParams"
+    Write-Output "Executing Backup-Files.ps1 with parameters: $(Format-ToString -Obj $backupFilesParams)"
     Backup-Files @backupFilesParams
     Write-Output ""
 }

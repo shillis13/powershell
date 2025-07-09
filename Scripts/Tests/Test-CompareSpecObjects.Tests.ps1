@@ -1,12 +1,44 @@
 # Compare-SpecObjects.Tests.ps1
 # Requires: Pester v5+
 
+# ===========================================================================================
+#region       Ensure PSRoot and Dot Source Core Globals
+# ===========================================================================================
+
+function InitializeCore {
+    if (-not $Script:PSRoot) {
+        $Script:PSRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
+        Write-Host "Set Script:PSRoot = $Script:PSRoot"
+    }
+    if (-not $Script:PSRoot) {
+        throw 'Script:PSRoot must be set by the entry-point script before using internal components.'
+    }
+
+    $Script:CliArgs = $args
+    . "$Script:PSRoot\Scripts\Initialize-CoreConfig.ps1"
+}
+
+
+#endregion
+# ===========================================================================================
+
+
 Describe "Compare-SortedCollections with VirtualItems and VirtualFolder" {
 
     BeforeAll {
-        . "$env:PowerShellScripts/DevUtils/Compare-Utils.ps1"
-        Import-Module "$env:PowerShellModules/VirtualFolderFileUtils/VirtualFolderFileUtils.psd1" -Force
-        #Set-LogLevel $LogDebug
+        #InitializeCore
+        if (-not $Script:PSRoot) {
+            $Script:PSRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
+            Write-Host "Set Script:PSRoot = $Script:PSRoot"
+        }
+        if (-not $Script:PSRoot) {
+            throw 'Script:PSRoot must be set by the entry-point script before using internal components.'
+        }
+
+        $Script:CliArgs = $args
+        . "$Script:PSRoot\Scripts\Initialize-CoreConfig.ps1"
+        # Import-Module "$env:PowerShellModules/VirtualFolderFileUtils/VirtualFolderFileUtils.psd1" -Force
+        . "$Script:PSRoot\Scripts\FileUtils\VirtualFolderFileUtils.ps1"
     }
 
     It "returns true for equivalent List of Items in different order" {

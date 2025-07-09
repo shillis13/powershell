@@ -3,6 +3,33 @@
 # It includes an enumerated LogLevel parameter and a global log level setting.
 # Log messages with LogLevel of Always are always printed, else only print log messages where LogLevel -le global log level.
 
+# ===========================================================================================
+#region       Ensure PSRoot and Dot Source Core Globals
+# ===========================================================================================
+
+if (-not $Script:PSRoot) {
+    $Script:PSRoot = (Resolve-Path "$PSScriptRoot\..\..").Path
+    #Write-Host "Set Global:PSRoot = $Script:PSRoot"
+    . "$Script:PSRoot\Scripts\Initialize-CoreConfig.ps1"
+
+}
+if (-not $Script:PSRoot) {
+    throw "Script:PSRoot must be set by the entry-point script before using internal components."
+}
+
+if (-not $Script:CliArgs -and $args) {
+    $Script:CliArgs = $args
+}
+
+if (-not $Script:Included_Get_Logging_Utils_Block) { 
+    $Script:Included_Get_Logging_Utils_Block = $true
+
+    . "$Script:PSRoot\Scripts\DevUtils\Get-CallStack.ps1"
+}
+
+#endregion
+# ===========================================================================================
+
 <#
 $stackframe properties:
 
@@ -55,11 +82,11 @@ enum LogLevel {
 #==================================================================================
 #region INIT: Global Variables
 #==================================================================================
-if (-not (Get-Variable -Name Included_Logging_Block -Scope Global -ErrorAction SilentlyContinue)) {
-    Set-Variable -Name Included_Logging_Block -Scope Global -Value $true
+if (-not (Get-Variable -Name Included_Logging_Block -Scope Script -ErrorAction SilentlyContinue)) {
+    Set-Variable -Name Included_Logging_Block -Scope Script -Value $true
 
-    $script:GlobalLogLevel = [LogLevel]::Info
-    $script:LogFileName    = "$Global:PSRoot\PowerShellLog.txt"
+    $Global:GlobalLogLevel = [LogLevel]::Info
+    $Global:LogFileName    = "$Script:PSRoot\PowerShellLog.txt"
 
     $Global:LogAlways     = [LogLevel]::Always
     $Global:LogError      = [LogLevel]::Error
@@ -93,12 +120,42 @@ function Set-LogLevel {
 }
 function Get-LogLevel { return $global:GlobalLogLevel }
 
+# function ConvertTo-LogLevel {
+#     [CmdletBinding()]
+#     param( [Parameter(Mandatory)][string]$LogLevel )
+#     $enumLogLevel = [LogLevel]::Info
+#     try { $enumLogLevel = [LogLevel]::Parse([string]$LogLevel, $true) }
+#     catch { Write-Warning "ConvertTo-LogLevel: Unable to convert $LogLevel to a LogLevel - falling back to $($enumLogLevel.ToString())." }
+#     return $enumLogLevel
+# }
 function ConvertTo-LogLevel {
     [CmdletBinding()]
     param( [Parameter(Mandatory)][string]$LogLevel )
     $enumLogLevel = [LogLevel]::Info
-    try { $enumLogLevel = [LogLevel]::Parse([string]$LogLevel, $true) }
-    catch { Write-Warning "ConvertTo-LogLevel: Unable to convert $LogLevel to a LogLevel - falling back to $($enumLogLevel.ToString())." }
+    $logLevelLower = $LogLevel.ToLower()
+    
+    if ($logLevelLower -eq "never") {
+        $enumLogLevel = [LogLevel]::Never
+    } elseif ($logLevelLower -eq "always") {
+        $enumLogLevel = [LogLevel]::Always
+    } elseif ($logLevelLower -eq "error") {
+        $enumLogLevel = [LogLevel]::Error
+    } elseif ($logLevelLower -eq "warn") {
+        $enumLogLevel = [LogLevel]::Warn
+    } elseif ($logLevelLower -eq "info") {
+        $enumLogLevel = [LogLevel]::Info
+    } elseif ($logLevelLower -eq "debug") {
+        $enumLogLevel = [LogLevel]::Debug
+    } elseif ($logLevelLower -eq "entryexit") {
+        $enumLogLevel = [LogLevel]::EntryExit
+    } elseif ($logLevelLower -eq "callstack") {
+        $enumLogLevel = [LogLevel]::CallStack
+    } elseif ($logLevelLower -eq "all") {
+        $enumLogLevel = [LogLevel]::All
+    } else {
+        Write-Warning "ConvertTo-LogLevel: Unable to convert $LogLevel to a LogLevel - falling back to $($enumLogLevel.ToString())."
+    }
+    
     return $enumLogLevel
 }
 #endregion
@@ -147,14 +204,15 @@ function Trace-EntryExit {
         [scriptblock]$ScriptBlock
     )
 
-    $scope = Log -Entry $Message
+    $null = Log -Entry -StackOffset 1 -Msg $Message
     try {
         & $ScriptBlock
     }
     finally {
-        if ($null -ne $scope -and $scope.PSObject.Methods["Dispose"]) {
-            $scope.Dispose()
-        }
+        # if ($null -ne $scope -and $null -ne $scope.Dispose) {
+        #     $scope.Dispose()
+        # }
+        Log -Exit -StackOffset 1 -Msg $Message
     }
 }
 #endregion
@@ -212,15 +270,20 @@ function Log {
         [switch]$Exit,
         [switch]$CallStack,
         [switch]$Dot,
+        [Parameter(Mandatory = $false)][int]$StackOffset,
         [Parameter(Position = 0, Mandatory = $false)][string]$Msg
     )
 
     $levelData = Get-LogLevelAndColor @PSBoundParameters
     $LogLevel = $levelData.Level
     $color = $levelData.Color
+
+    if ( -not $StackOffset ) { $StackOffset = 1 } else { $StackOffset += 1 }
+    if ( -not $LogFile) { $LogFile = Get-LogFilePathName }
     if ( -not $Tag ) { $Tag = $levelData.Tag }
 
-    $stackFrame = (Get-PSCallStack)[1]
+    #$theStack = Get-CallStack
+    $stackFrame = (Get-StackFrame -Index 0 -Skip $StackOffset)
     $fnName = $stackFrame.FunctionName
 
     if ($Dot) {
@@ -230,9 +293,9 @@ function Log {
     }
 
     if ($CallStack) {
-        $Msg = "$Msg`n" + ((Get-PSCallStack | ForEach-Object {
-            "    $($_.FunctionName) @ $($_.ScriptName):$($_.ScriptLineNumber)"
-        } )-join "`n")
+        #$Msg = "$Msg`n" + (((Get-PSCallStack)[($StackOffset)] | ForEach-Object {
+        #    "    $($_.FunctionName) @ $($_.ScriptName):$($_.ScriptLineNumber)"
+        $Msg = "$Msg`n$(Get-CallStack -Skip $StackOffset)"
     }
 
     if ($Entry) {
@@ -250,16 +313,11 @@ function Log {
         Write-LogMessage -Message $logEntry -Color $color -NoNewLine:$NoNewLine -LogFile:$LogFile
 
         if ($Entry) {
-            return [PSCustomObject]@{
-                Dispose = {
-                    $ts = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-                    $exitMsg = "◀️ Exit $fnName"
-                    Write-Host "[$ts] [Trace] $($fnName):$($stackFrame.ScriptLineNumber): $exitMsg" -ForegroundColor Magenta
-                    if (Get-LogFilePathName) {
-                        Add-Content -Path (Get-LogFilePathName) -Value "[$ts] [Trace] $($fnName):$($stackFrame.ScriptLineNumber): $exitMsg"
-                    }
-                }
-            }
+            $logEntryExitObj = [PSCustomObject]@{}
+            Add-Member -InputObject $logEntryExitObj -MemberType ScriptMethod -Name Dispose -Value {
+                Log -Exit -StackOffset 1 -Msg "$fnName"
+            }#.GetNewClosure()
+            return $logEntryExitObj
         }
     }
 }
@@ -311,15 +369,15 @@ function Format-LogPrefix {
         [LogLevel]$LogLevel,
         [string]$Tag,
         [switch]$DryRun,
-        [switch]$MsgOnly
+        [switch]$MsgOnly,
+        [object]$Frame
     )
     if ($MsgOnly) { return "" }
 
     $timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
-    $stackFrame = (Get-PSCallStack)[2]
-    $functionName = $stackFrame.FunctionName
-    $lineNumber = $stackFrame.ScriptLineNumber
-    $fileName = if ($stackFrame.ScriptName) {
+    $functionName = $Frame.FunctionName
+    $lineNumber = $Frame.ScriptLineNumber
+    $fileName = if ($Frame.ScriptName) {
         [System.IO.Path]::GetFileName($stackFrame.ScriptName)
     } else {
         "<NoFile>"
@@ -347,10 +405,10 @@ function Write-LogMessage {
     Write-Host -NoNewLine:$NoNewLine $Message -ForegroundColor $Color
 
     if ($LogFile) {
-        Add-Content -Path $LogFile -Value $Message
+        Add-Content -Path $LogFile -Value $Message -NoNewLine:$NoNewLine
     }
-    if (Get-LogFilePathName) {
-        Add-Content -Path (Get-LogFilePathName) -Value $Message
+    elseif (Get-LogFilePathName) {
+        Add-Content -Path (Get-LogFilePathName) -Value $Message -NoNewLine:$NoNewLine
     }
 }
 
