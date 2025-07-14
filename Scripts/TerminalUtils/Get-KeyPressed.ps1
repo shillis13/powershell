@@ -9,12 +9,12 @@ Uses [Console]::KeyAvailable and [Console]::ReadKey to capture keyboard input
 with three distinct operating modes determined by parameters:
 
 - Default: Non-blocking (checks once and returns immediately)
-- -Blocking: Waits indefinitely until a key is pressed
+- -Blocking: Waits indefinitely until a key is pressed  
 - -Timeout {secs}: Waits up to specified seconds, then returns null
 
 If both -Blocking and -Timeout are specified, -Timeout takes precedence.
 
-Returns detailed information about the pressed key including modifier states
+Returns detailed information about the pressed key including modifier states 
 and character representation.
 
 .PARAMETER Blocking
@@ -80,7 +80,7 @@ function Get-KeyPressed {
     # Priority: Timeout > 0 = Timeout mode, else Blocking switch = Blocking mode, else NonBlocking
     $useTimeout = $Timeout -gt 0
     $useBlocking = $Blocking -and -not $useTimeout
-
+    
     # Non-blocking: Check once and return immediately (default behavior)
     if (-not $useTimeout -and -not $useBlocking) {
         if ([Console]::KeyAvailable) {
@@ -97,10 +97,10 @@ function Get-KeyPressed {
         }
         return $null
     }
-
+    
     # Blocking or Timeout modes
     $startTime = Get-Date
-
+    
     do {
         if ([Console]::KeyAvailable) {
             $keyInfo = [Console]::ReadKey(!$ShowKey)
@@ -114,17 +114,17 @@ function Get-KeyPressed {
                 Timestamp = Get-Date
             }
         }
-
+        
         # Small delay to prevent excessive CPU usage in blocking modes
         Start-Sleep -Milliseconds 10
-
+        
         # For Timeout mode, check if time exceeded
         if ($useTimeout -and ((Get-Date) - $startTime).TotalSeconds -ge $Timeout) {
             return $null
         }
-
+        
     } while ($useBlocking -or $useTimeout)
-
+    
     return $null
 }
 
@@ -141,33 +141,33 @@ Demonstrates various ways to compare and handle key input.
 function Test-NonBlockingInput {
     Write-Host "Non-blocking demo - doing work while checking for 's' to stop..."
     $counter = 0
-
+    
     do {
         # Do other work
         Write-Host "Working... $counter" -NoNewline
         Start-Sleep -Milliseconds 500
         Write-Host "`r" -NoNewline
         $counter++
-
+        
         # Check for key press without blocking - returns immediately
         $key = Get-KeyPressed
         if ($key -and $key.Key.ToLower() -eq 's') {
             Write-Host "`nStop key pressed!"
             break
         }
-
+        
     } while ($counter -lt 100)
-
+    
     Write-Host "Demo completed."
 }
 
 # Example 2: Blocking key input (waits indefinitely)
 function Test-BlockingInput {
     Write-Host "Blocking demo - waiting for any key (will wait forever until key pressed)..."
-
+    
     $key = Get-KeyPressed -Blocking
     Write-Host "You pressed: '$($key.Key)'"
-
+    
     Write-Host "Press 'q' to quit..."
     do {
         $key = Get-KeyPressed -Blocking
@@ -178,7 +178,7 @@ function Test-BlockingInput {
 # Example 3: Timeout blocking (waits up to specified time)
 function Test-TimeoutInput {
     Write-Host "Timeout demo - you have 5 seconds to press a key..."
-
+    
     $key = Get-KeyPressed -Timeout 5
     if ($key) {
         Write-Host "You pressed '$($key.Key)' in time!"
@@ -192,7 +192,7 @@ function Show-AdvancedKeyMenu {
     Write-Host @"
 Advanced Key Menu Demo:
 1 - Option One
-2 - Option Two
+2 - Option Two  
 Y - Yes
 N - No
 Q - Quit
@@ -216,19 +216,19 @@ Press any key to start, or wait 3 seconds to auto-start...
                 '2' { Write-Host "Option Two selected!" }
                 'y' { Write-Host "Yes selected!" }
                 'n' { Write-Host "No selected!" }
-                'q' {
+                'q' { 
                     Write-Host "Goodbye!"
-                    break
+                    break 
                 }
                 default {
                     Write-Host "Unknown key: $($key.Key)"
                 }
             }
         }
-
+        
         # Do other background work
         Start-Sleep -Milliseconds 100
-
+        
     } while ($true)
 }
 
@@ -239,11 +239,11 @@ function Get-UserChoice {
         [int]$TimeoutSeconds = 10,
         [char]$DefaultChoice = 'N'
     )
-
+    
     Write-Host "$Prompt (timeout in $TimeoutSeconds seconds, default: $DefaultChoice): " -NoNewline
-
+    
     $key = Get-KeyPressed -Timeout $TimeoutSeconds -ShowKey
-
+    
     if ($key) {
         Write-Host ""  # New line after the key
         return $key.Key.ToUpper()
@@ -268,7 +268,7 @@ Special Key Detection Demo:
 
     do {
         $key = Get-KeyPressed -Blocking
-
+        
         # Method 1: Using character constants (for keys that produce characters)
         if ($key.Key -eq $script:KEY_ENTER) {
             Write-Host "Enter pressed - confirmed!"
@@ -282,7 +282,7 @@ Special Key Detection Demo:
         elseif ($key.Key -eq $script:KEY_SPACE) {
             Write-Host "Space pressed - continuing..."
         }
-
+        
         # Method 2: Using KeyCode constants (preferred for special keys)
         elseif ($key.KeyCode -eq $script:KEYCODE_F1) {
             Write-Host "F1 pressed - showing help!"
@@ -291,7 +291,7 @@ Special Key Detection Demo:
             Write-Host "Up arrow - moving up"
         }
         elseif ($key.KeyCode -eq $script:KEYCODE_DOWN) {
-            Write-Host "Down arrow - moving down"
+            Write-Host "Down arrow - moving down" 
         }
         elseif ($key.KeyCode -eq $script:KEYCODE_LEFT) {
             Write-Host "Left arrow - moving left"
@@ -305,7 +305,7 @@ Special Key Detection Demo:
         elseif ($key.KeyCode -eq $script:KEYCODE_BACKSPACE) {
             Write-Host "Backspace pressed"
         }
-
+        
         # Regular character keys
         elseif ($key.Key.ToLower() -eq 'q') {
             Write-Host "Quit selected - goodbye!"
@@ -314,7 +314,7 @@ Special Key Detection Demo:
         else {
             Write-Host "Other key: '$($key.Key)' (KeyCode: $($key.KeyCode))"
         }
-
+        
     } while ($true)
 }
 
@@ -329,11 +329,11 @@ Type some text and press Enter to see different detection methods...
     do {
         Write-Host "Input: " -NoNewline
         $input = ""
-
+        
         # Build input string character by character until Enter
         do {
             $key = Get-KeyPressed -Blocking -ShowKey
-
+            
             # Check for Enter using different methods
             if ($key.Key -eq $script:KEY_ENTER) {
                 Write-Host ""  # New line
@@ -341,7 +341,7 @@ Type some text and press Enter to see different detection methods...
                 break
             }
             elseif ($key.KeyCode -eq $script:KEYCODE_ENTER) {
-                Write-Host ""  # New line
+                Write-Host ""  # New line  
                 Write-Host "Enter detected using KeyCode constant: ConsoleKey.Enter"
                 break
             }
@@ -368,16 +368,16 @@ Type some text and press Enter to see different detection methods...
                     $input += $key.Key
                 }
             }
-
+            
         } while ($true)
-
+        
         Write-Host "You entered: '$input'"
-
+        
         if ($input.ToLower() -eq 'quit') {
             Write-Host "Goodbye!"
             break
         }
-
+        
     } while ($true)
 }
 
@@ -386,7 +386,7 @@ function Test-KeyCombinations {
     Write-Host @"
 Key Combination Detection:
 - Ctrl+C: Copy
-- Ctrl+V: Paste
+- Ctrl+V: Paste  
 - Ctrl+Enter: Submit
 - Alt+F4: Exit
 - Shift+Tab: Reverse tab
@@ -396,7 +396,7 @@ Key Combination Detection:
 
     do {
         $key = Get-KeyPressed -Blocking
-
+        
         # Check combinations first (more specific)
         if ($key.Ctrl -and $key.Key.ToLower() -eq 'c') {
             Write-Host "Ctrl+C - Copy command"
@@ -414,7 +414,7 @@ Key Combination Detection:
         elseif ($key.Shift -and $key.Key -eq $script:KEY_TAB) {
             Write-Host "Shift+Tab - Reverse tab"
         }
-
+        
         # Then check individual keys
         elseif ($key.Key -eq $script:KEY_ENTER) {
             Write-Host "Enter - New line"
@@ -426,13 +426,13 @@ Key Combination Detection:
         else {
             $modifiers = @()
             if ($key.Ctrl) { $modifiers += "Ctrl" }
-            if ($key.Alt) { $modifiers += "Alt" }
+            if ($key.Alt) { $modifiers += "Alt" }  
             if ($key.Shift) { $modifiers += "Shift" }
-
+            
             $modStr = if ($modifiers.Count -gt 0) { ($modifiers -join "+") + "+" } else { "" }
             Write-Host "$modStr$($key.Key)"
         }
-
+        
     } while ($true)
 }
 
@@ -440,23 +440,23 @@ Key Combination Detection:
 function Test-NonBlockingInput {
     Write-Host "Starting non-blocking demo (press 's' to stop)..."
     $counter = 0
-
+    
     do {
         # Do other work
         Write-Host "Working... $counter" -NoNewline
         Start-Sleep -Milliseconds 500
         Write-Host "`r" -NoNewline
         $counter++
-
+        
         # Check for key press without blocking
         $key = Get-KeyPressed
         if ($key -and $key.Key.ToLower() -eq 's') {
             Write-Host "`nStop key pressed!"
             break
         }
-
+        
     } while ($counter -lt 100)
-
+    
     Write-Host "Demo completed."
 }
 
@@ -519,7 +519,7 @@ do {
     # Do work
     Write-Host "Working..." -NoNewline
     Start-Sleep -Milliseconds 500
-
+    
     # Quick check for escape key
     $key = Get-KeyPressed
     if ($key -and $key.Key -eq $script:KEY_ESCAPE) {
@@ -545,8 +545,7 @@ Get-KeyPressed -Blocking -Timeout 5  # -Timeout takes precedence (5 second timeo
 
 # Best practices for Enter key:
 # 1. Use $script:KEY_ENTER for character comparison (most reliable)
-# 2. Use $script:KEYCODE_ENTER for KeyCode comparison
+# 2. Use $script:KEYCODE_ENTER for KeyCode comparison  
 # 3. Both methods work, character constant is preferred for keys that produce characters
 # 4. For function keys, arrows, etc. that don't produce printable characters, use KeyCode constants
 #>
-
