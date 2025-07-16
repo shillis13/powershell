@@ -1,0 +1,589 @@
+{
+  "__comment": "Example 1: Simple Single Script Package",
+  "__description": "Packages a single PowerShell script with documentation",
+  "__what_it_does": [
+    "1. Creates 'deploy' directory",
+    "2. Copies Get-KeyPressed.ps1 to deploy root",
+    "3. Copies README.md to deploy root", 
+    "4. Creates run.cmd batch file for easy execution",
+    "5. Generates package-manifest.json with file inventory"
+  ],
+  
+  "$schema": "./package-config.schema.json",
+  "package": {
+    "name": "Console Key Handler",
+    "version": "1.0.0",
+    "description": "PowerShell console key handling utilities",
+    "author": "Developer",
+    "created_date": "2025-07-14",
+    "tags": ["powershell", "console", "input", "utilities"]
+  },
+  
+  "files": [
+    {
+      "name": "main_script",
+      "source": "Get-KeyPressed.ps1",
+      "destination": "",
+      "preserve_structure": false
+    },
+    {
+      "name": "documentation",
+      "source": "README.md",
+      "destination": "",
+      "preserve_structure": false
+    }
+  ],
+  
+  "post_package": [
+    {
+      "type": "create_file",
+      "path": "run.cmd",
+      "content": "@echo off\necho Starting Console Key Handler...\npowershell -ExecutionPolicy Bypass -File \"Get-KeyPressed.ps1\"\necho.\necho Press any key to exit...\npause >nul"
+    }
+  ]
+}
+
+{
+  "__comment": "Example 2: SharePoint Tools - Complex Real-World Package",
+  "__description": "Comprehensive packaging for SharePoint automation tools with multiple directories",
+  "__what_it_does": [
+    "1. Creates directory structure: scripts/, lib/, docs/, tests/, config/, drivers/",
+    "2. Copies Get-SharePointFile*.ps1 to scripts/ (excludes backup/temp files)",
+    "3. Copies lib_*.ps1 files to lib/ (excludes test files)",
+    "4. Copies *.md files to docs/ (excludes TODO.md and PRIVATE files)",
+    "5. Copies test files to tests/ with full directory structure preserved",
+    "6. Copies config templates to config/",
+    "7. Copies driver files to drivers/ with structure preserved",
+    "8. Creates comprehensive INSTALL.md with setup instructions",
+    "9. Creates VERSION.json with build metadata",
+    "10. Creates ZIP archive named sharepoint-tools-v1.2.0.zip",
+    "11. Generates detailed manifest tracking all 20+ files"
+  ],
+  
+  "$schema": "./package-config.schema.json",
+  "package": {
+    "name": "SharePoint File Download Tools",
+    "version": "1.2.0",
+    "description": "PowerShell scripts for downloading files from SharePoint 2019 and 365",
+    "author": "PianoMan",
+    "created_date": "2025-07-14",
+    "tags": ["sharepoint", "powershell", "file-download", "automation", "selenium"]
+  },
+  
+  "directories": [
+    "scripts",
+    "lib", 
+    "docs",
+    "tests",
+    "config",
+    "drivers"
+  ],
+  
+  "files": [
+    {
+      "name": "core_scripts",
+      "source": "Get-SharePointFile*.ps1",
+      "destination": "scripts",
+      "preserve_structure": false,
+      "exclude": [
+        "*backup*",
+        "*temp*",
+        "*old*"
+      ]
+    },
+    {
+      "name": "library_scripts",
+      "source": "lib_*.ps1", 
+      "destination": "lib",
+      "preserve_structure": false,
+      "exclude": [
+        "*test*",
+        "*debug*"
+      ]
+    },
+    {
+      "name": "documentation",
+      "source": "*.md",
+      "destination": "docs",
+      "preserve_structure": false,
+      "exclude": [
+        "TODO.md",
+        "PRIVATE*.md",
+        "NOTES.md"
+      ]
+    },
+    {
+      "name": "test_files",
+      "source": "test*.*",
+      "destination": "tests",
+      "preserve_structure": true,
+      "exclude": [
+        "*.tmp",
+        "test-results*",
+        "*backup*"
+      ]
+    },
+    {
+      "name": "config_templates",
+      "source": "config/*.template.*",
+      "destination": "config",
+      "preserve_structure": false
+    },
+    {
+      "name": "selenium_drivers",
+      "source": "drivers/*",
+      "destination": "drivers",
+      "preserve_structure": true
+    }
+  ],
+  
+  "post_package": [
+    {
+      "type": "create_file",
+      "path": "INSTALL.md",
+      "content": "# SharePoint Tools Installation\n\n## Quick Start\n1. Extract to your preferred location\n2. Copy scripts to your PowerShell modules path:\n   ```powershell\n   Copy-Item .\\scripts\\* $env:PSModulePath\\SharePointTools\\ -Recurse\n   ```\n3. Import the main module:\n   ```powershell\n   Import-Module SharePointTools\\Get-SharePointFile.ps1\n   ```\n4. Run initial setup:\n   ```powershell\n   .\\scripts\\Setup-SharePointTools.ps1\n   ```\n\n## Requirements\n- PowerShell 5.1 or later\n- Selenium PowerShell module\n- Chrome browser (version 90+)\n- Network access to SharePoint sites\n\n## Configuration\n1. Copy config\\sharepoint.template.json to config\\sharepoint.json\n2. Edit sharepoint.json with your SharePoint URLs\n3. Test connection: `Test-SharePointConnection`\n\n## Usage\nSee docs\\README.md for detailed usage instructions and examples.\n\n## Troubleshooting\nSee docs\\TROUBLESHOOTING.md for common issues and solutions."
+    },
+    {
+      "type": "create_file",
+      "path": "VERSION.json",
+      "content": {
+        "version": "1.2.0",
+        "build_date": "2025-07-14T22:35:00.000Z",
+        "package_name": "SharePoint File Download Tools",
+        "build_info": {
+          "packager_version": "2.0.0",
+          "powershell_version": "5.1.19041.4648",
+          "build_machine": "DEV-MACHINE-01"
+        },
+        "dependencies": {
+          "selenium": ">=3.0.0",
+          "chrome": ">=90.0"
+        }
+      }
+    },
+    {
+      "type": "zip_package",
+      "name": "sharepoint-tools-v1.2.0"
+    }
+  ]
+}
+
+{
+  "__comment": "Example 3: Flattened Directory Structure with Path Rewriting",
+  "__description": "Demonstrates flattening complex directory structure and updating dot-source paths",
+  "__what_it_does": [
+    "1. Creates scripts/ directory",
+    "2. Copies all *.ps1 files from root to scripts/ (flattened)",
+    "3. Copies all lib/*.ps1 files to scripts/ (flattened)",
+    "4. Copies all lib/helpers/*.ps1 files to scripts/ (flattened)",
+    "5. Updates dot-source paths in all scripts:",
+    "   - Changes '. .\\lib\\utils.ps1' to '. .\\utils.ps1'",
+    "   - Changes '. .\\lib\\helpers\\logging.ps1' to '. .\\logging.ps1'",
+    "6. Creates backup copies of original files before path updates",
+    "7. Generates manifest showing original vs final paths"
+  ],
+  "__original_structure": [
+    "project/",
+    "├── main.ps1                  # Contains: . .\\lib\\utils.ps1",
+    "├── lib/",
+    "│   ├── utils.ps1            # Contains: . .\\helpers\\logging.ps1", 
+    "│   └── helpers/",
+    "│       └── logging.ps1"
+  ],
+  "__final_structure": [
+    "deploy/scripts/",
+    "├── main.ps1                  # Updated to: . .\\utils.ps1",
+    "├── utils.ps1                # Updated to: . .\\logging.ps1",
+    "└── logging.ps1"
+  ],
+  
+  "$schema": "./package-config.schema.json",
+  "package": {
+    "name": "Flattened Script Package",
+    "version": "1.0.0",
+    "description": "Example of flattening directory structure with automatic path updates",
+    "author": "Developer"
+  },
+  
+  "files": [
+    {
+      "name": "root_scripts",
+      "source": "*.ps1",
+      "destination": "scripts",
+      "flatten": true
+    },
+    {
+      "name": "lib_scripts", 
+      "source": "lib/*.ps1",
+      "destination": "scripts",
+      "flatten": true
+    },
+    {
+      "name": "helper_scripts",
+      "source": "lib/helpers/*.ps1",
+      "destination": "scripts",
+      "flatten": true
+    }
+  ],
+  
+  "post_package": [
+    {
+      "type": "create_file",
+      "path": "PATH_UPDATES.md",
+      "content": "# Dot-Source Path Updates\n\nThe following paths were automatically updated due to directory flattening:\n\n## Original → Updated\n- `. .\\lib\\utils.ps1` → `. .\\utils.ps1`\n- `. .\\lib\\helpers\\logging.ps1` → `. .\\logging.ps1`\n- `. .\\..\\shared\\common.ps1` → `. .\\common.ps1`\n\n## Backup Files\nOriginal files with unchanged paths are saved as *.backup\n\n## Manual Review Needed\nCheck for any variable-based paths like `. $libPath\\file.ps1` which cannot be automatically updated."
+    }
+  ]
+}
+
+{
+  "__comment": "Example 4: Web Application Multi-Format Package",
+  "__description": "Packages a web application with various file types and startup scripts",
+  "__what_it_does": [
+    "1. Creates directory structure: app/, config/, static/css/, static/js/, static/images/, templates/, data/",
+    "2. Copies Python source files from src/ to app/ (flattened)",
+    "3. Copies CSS files to static/css/ preserving structure",
+    "4. Copies JavaScript files to static/js/ preserving structure", 
+    "5. Copies image files to static/images/ preserving structure",
+    "6. Copies HTML templates preserving structure",
+    "7. Copies JSON config files (excludes secrets and local configs)",
+    "8. Copies requirements.txt and README.md to root",
+    "9. Creates Linux startup script (start.sh)",
+    "10. Creates Windows startup script (start.bat)",
+    "11. Creates development environment setup script",
+    "12. Generates deployment manifest with file sizes and checksums"
+  ],
+  
+  "$schema": "./package-config.schema.json",
+  "package": {
+    "name": "Internal Web Dashboard",
+    "version": "2.1.0",
+    "description": "Company internal dashboard application with Python backend",
+    "author": "Web Development Team",
+    "created_date": "2025-07-14",
+    "tags": ["python", "web", "dashboard", "flask", "internal"]
+  },
+  
+  "directories": [
+    "app",
+    "config",
+    "static/css", 
+    "static/js",
+    "static/images",
+    "templates",
+    "data"
+  ],
+  
+  "files": [
+    {
+      "name": "python_app",
+      "source": "src/*.py",
+      "destination": "app",
+      "preserve_structure": false,
+      "exclude": [
+        "*test*",
+        "*debug*",
+        "__pycache__"
+      ]
+    },
+    {
+      "name": "css_assets",
+      "source": "static/css/**/*.css",
+      "destination": "static/css",
+      "preserve_structure": true
+    },
+    {
+      "name": "js_assets",
+      "source": "static/js/**/*.js", 
+      "destination": "static/js",
+      "preserve_structure": true
+    },
+    {
+      "name": "image_assets",
+      "source": "static/images/**/*",
+      "destination": "static/images",
+      "preserve_structure": true,
+      "exclude": [
+        "*.psd",
+        "*.ai",
+        "*raw*"
+      ]
+    },
+    {
+      "name": "html_templates",
+      "source": "templates/**/*.html",
+      "destination": "templates", 
+      "preserve_structure": true
+    },
+    {
+      "name": "config_files",
+      "source": "config/*.json",
+      "destination": "config",
+      "preserve_structure": false,
+      "exclude": [
+        "config/secrets*",
+        "config/local*",
+        "config/dev*"
+      ]
+    },
+    {
+      "name": "requirements",
+      "source": "requirements.txt",
+      "destination": ""
+    },
+    {
+      "name": "documentation",
+      "source": "README.md",
+      "destination": ""
+    }
+  ],
+  
+  "post_package": [
+    {
+      "type": "create_file",
+      "path": "start.sh",
+      "content": "#!/bin/bash\n# Web Dashboard Startup Script (Linux/macOS)\n\nset -e\n\necho \"Setting up Web Dashboard...\"\n\n# Create virtual environment\nif [ ! -d \"venv\" ]; then\n    echo \"Creating Python virtual environment...\"\n    python3 -m venv venv\nfi\n\n# Activate virtual environment\necho \"Activating virtual environment...\"\nsource venv/bin/activate\n\n# Install dependencies\necho \"Installing dependencies...\"\npip install -r requirements.txt\n\n# Check configuration\nif [ ! -f \"config/app.json\" ]; then\n    echo \"Warning: config/app.json not found. Copying from template...\"\n    cp config/app.template.json config/app.json\n    echo \"Please edit config/app.json before running the application.\"\nfi\n\n# Start application\necho \"Starting Web Dashboard...\"\ncd app\npython main.py\n\necho \"Web Dashboard stopped.\""
+    },
+    {
+      "type": "create_file",
+      "path": "start.bat",
+      "content": "@echo off\nREM Web Dashboard Startup Script (Windows)\n\nsetlocal enabledelayedexpansion\n\necho Setting up Web Dashboard...\n\nREM Create virtual environment\nif not exist \"venv\" (\n    echo Creating Python virtual environment...\n    python -m venv venv\n    if errorlevel 1 (\n        echo Error: Failed to create virtual environment.\n        echo Please ensure Python 3.7+ is installed and in PATH.\n        pause\n        exit /b 1\n    )\n)\n\nREM Activate virtual environment\necho Activating virtual environment...\ncall venv\\Scripts\\activate.bat\n\nREM Install dependencies\necho Installing dependencies...\npip install -r requirements.txt\nif errorlevel 1 (\n    echo Error: Failed to install dependencies.\n    pause\n    exit /b 1\n)\n\nREM Check configuration\nif not exist \"config\\app.json\" (\n    echo Warning: config\\app.json not found. Copying from template...\n    copy \"config\\app.template.json\" \"config\\app.json\"\n    echo Please edit config\\app.json before running the application.\n    pause\n)\n\nREM Start application\necho Starting Web Dashboard...\ncd app\npython main.py\n\necho Web Dashboard stopped.\npause"
+    },
+    {
+      "type": "create_file",
+      "path": "setup-dev.sh",
+      "content": "#!/bin/bash\n# Development Environment Setup\n\nset -e\n\necho \"Setting up development environment...\"\n\n# Install development dependencies\nsource venv/bin/activate\npip install -r requirements.txt\npip install pytest flask-testing black flake8\n\n# Create development config\ncp config/app.template.json config/app.dev.json\nsed -i 's/\"debug\": false/\"debug\": true/g' config/app.dev.json\n\n# Set up pre-commit hooks\necho \"Setting up pre-commit hooks...\"\ncat > .git/hooks/pre-commit << 'EOF'\n#!/bin/bash\nblack app/\nflake8 app/\nEOF\nchmod +x .git/hooks/pre-commit\n\necho \"Development environment ready!\"\necho \"Run: source venv/bin/activate && cd app && python main.py\""
+    }
+  ]
+}
+
+{
+  "__comment": "Example 5: Auto-Generated from Dependency Analysis",
+  "__description": "Configuration automatically generated by analyzing PowerShell script dependencies",
+  "__what_it_does": [
+    "1. This config was generated by: New-Package -Mode AutoPackage -StartingFiles @('Get-SharePointFile.ps1')",
+    "2. Dependency analyzer found 8 PowerShell files through dot-source tracing",
+    "3. Creates scripts/ and docs/ directories",
+    "4. Copies all discovered *.ps1 files to scripts/",
+    "5. Copies any README files found to docs/",
+    "6. Reports 2 unresolved dependencies that need manual attention",
+    "7. Includes full dependency metadata for troubleshooting",
+    "8. Can be manually edited before packaging to fix issues or add customizations"
+  ],
+  "__dependency_trace": [
+    "Get-SharePointFile.ps1 → lib_filters.ps1 (✓ found)",
+    "Get-SharePointFile.ps1 → lib_logging.ps1 (✓ found)", 
+    "lib_filters.ps1 → utils\\string-helpers.ps1 (✓ found)",
+    "lib_logging.ps1 → .\\missing-module.ps1 (✗ not found)",
+    "lib_logging.ps1 → $configPath\\settings.ps1 (? variable path - cannot resolve)"
+  ],
+  
+  "$schema": "./package-config.schema.json",
+  "package": {
+    "name": "SharePointFileDownloader",
+    "version": "1.0.0",
+    "description": "Auto-generated package from dependency analysis",
+    "created_date": "2025-07-14",
+    "auto_generated": true,
+    "dependency_analysis": {
+      "TotalFiles": 8,
+      "StartingFiles": ["Get-SharePointFile.ps1"],
+      "SearchPaths": [".", "./lib", "./utils"],
+      "AnalysisDate": "2025-07-14T22:35:00.000Z"
+    }
+  },
+  
+  "directories": [
+    "scripts",
+    "docs"
+  ],
+  
+  "files": [
+    {
+      "name": "discovered_scripts",
+      "source": "*.ps1",
+      "destination": "scripts",
+      "preserve_structure": false,
+      "exclude": [
+        "*test*",
+        "*backup*"
+      ]
+    },
+    {
+      "name": "library_files",
+      "source": "lib/*.ps1",
+      "destination": "scripts",
+      "preserve_structure": false
+    },
+    {
+      "name": "utility_files", 
+      "source": "utils/*.ps1",
+      "destination": "scripts",
+      "preserve_structure": false
+    },
+    {
+      "name": "documentation",
+      "source": "README*.md",
+      "destination": "docs",
+      "preserve_structure": false
+    }
+  ],
+  
+  "dependency_metadata": {
+    "total_files_analyzed": 8,
+    "starting_files": ["Get-SharePointFile.ps1"],
+    "unresolved_dependencies": [
+      {
+        "file": "C:\\Projects\\SharePoint\\lib_logging.ps1",
+        "dependency": ".\\missing-module.ps1",
+        "line": ". .\\missing-module.ps1"
+      },
+      {
+        "file": "C:\\Projects\\SharePoint\\lib_logging.ps1", 
+        "dependency": "$configPath\\settings.ps1",
+        "line": ". \"$configPath\\settings.ps1\""
+      }
+    ]
+  },
+  
+  "post_package": [
+    {
+      "type": "create_file",
+      "path": "DEPENDENCY_REPORT.md",
+      "content": "# Dependency Analysis Report\n\nGenerated: 2025-07-14T22:35:00.000Z\n\n## Files Discovered\n- Get-SharePointFile.ps1 (entry point)\n- lib_filters.ps1\n- lib_logging.ps1 \n- lib_outputColors.ps1\n- utils\\string-helpers.ps1\n- utils\\file-utils.ps1\n- helpers\\validation.ps1\n- helpers\\error-handling.ps1\n\n## Dependency Chain\n```\nGet-SharePointFile.ps1\n├── lib_filters.ps1\n│   └── utils\\string-helpers.ps1\n├── lib_logging.ps1\n│   ├── helpers\\error-handling.ps1\n│   ├── .\\missing-module.ps1 (⚠️ NOT FOUND)\n│   └── $configPath\\settings.ps1 (⚠️ VARIABLE PATH)\n└── lib_outputColors.ps1\n    └── utils\\file-utils.ps1\n        └── helpers\\validation.ps1\n```\n\n## Issues Found\n⚠️ **2 unresolved dependencies** - manual review required\n\n1. `missing-module.ps1` - Referenced in lib_logging.ps1 but not found\n2. `$configPath\\settings.ps1` - Variable-based path cannot be resolved statically\n\n## Recommendations\n1. Locate missing-module.ps1 or remove the reference\n2. Replace variable path with fixed path or add to exclusions\n3. Test packaged scripts to ensure all dependencies work correctly"
+    }
+  ]
+}
+
+{
+  "__comment": "Example 6: Multi-Environment Package with Conditional Logic",
+  "__description": "Advanced package supporting different deployment environments",
+  "__what_it_does": [
+    "1. Creates environment-specific packages based on config",
+    "2. Includes different connection strings per environment",
+    "3. Packages different script sets for dev vs production",
+    "4. Creates environment-specific configuration files", 
+    "5. Generates appropriate startup scripts for each environment",
+    "6. Includes deployment verification scripts",
+    "7. Creates rollback procedures for production deployments"
+  ],
+  
+  "$schema": "./package-config.schema.json",
+  "package": {
+    "name": "Multi-Environment SharePoint Tools",
+    "version": "2.0.0", 
+    "description": "SharePoint tools with environment-specific configurations",
+    "author": "DevOps Team",
+    "created_date": "2025-07-14",
+    "tags": ["sharepoint", "multi-environment", "devops", "deployment"]
+  },
+  
+  "directories": [
+    "scripts",
+    "config",
+    "docs",
+    "deployment"
+  ],
+  
+  "files": [
+    {
+      "name": "core_scripts",
+      "source": "src/core/*.ps1",
+      "destination": "scripts",
+      "preserve_structure": false
+    },
+    {
+      "name": "production_scripts",
+      "source": "src/production/*.ps1", 
+      "destination": "scripts",
+      "preserve_structure": false
+    },
+    {
+      "name": "config_templates",
+      "source": "config/templates/*.json",
+      "destination": "config",
+      "preserve_structure": false
+    },
+    {
+      "name": "deployment_scripts",
+      "source": "deployment/*.ps1",
+      "destination": "deployment",
+      "preserve_structure": false
+    },
+    {
+      "name": "documentation",
+      "source": "docs/*.md",
+      "destination": "docs", 
+      "preserve_structure": false
+    }
+  ],
+  
+  "post_package": [
+    {
+      "type": "create_file",
+      "path": "config/development.json",
+      "content": {
+        "environment": "development",
+        "sharepoint": {
+          "sp2019_url": "https://dev-sharepoint.company.com",
+          "sp365_url": "https://companydev.sharepoint.com",
+          "timeout_seconds": 30,
+          "retry_attempts": 3,
+          "debug_mode": true
+        },
+        "logging": {
+          "level": "DEBUG",
+          "file": "logs/sharepoint-dev.log",
+          "console_output": true
+        }
+      }
+    },
+    {
+      "type": "create_file", 
+      "path": "config/staging.json",
+      "content": {
+        "environment": "staging",
+        "sharepoint": {
+          "sp2019_url": "https://staging-sharepoint.company.com",
+          "sp365_url": "https://companystaging.sharepoint.com", 
+          "timeout_seconds": 60,
+          "retry_attempts": 5,
+          "debug_mode": false
+        },
+        "logging": {
+          "level": "INFO",
+          "file": "logs/sharepoint-staging.log",
+          "console_output": false
+        }
+      }
+    },
+    {
+      "type": "create_file",
+      "path": "config/production.json", 
+      "content": {
+        "environment": "production",
+        "sharepoint": {
+          "sp2019_url": "https://sharepoint.company.com",
+          "sp365_url": "https://company.sharepoint.com",
+          "timeout_seconds": 120,
+          "retry_attempts": 10,
+          "debug_mode": false
+        },
+        "logging": {
+          "level": "WARN",
+          "file": "logs/sharepoint-prod.log",
+          "console_output": false
+        }
+      }
+    },
+    {
+      "type": "create_file",
+      "path": "deploy.ps1",
+      "content": "param(\n    [Parameter(Mandatory=$true)]\n    [ValidateSet('development', 'staging', 'production')]\n    [string]$Environment,\n    \n    [switch]$Verify\n)\n\nWrite-Host \"Deploying SharePoint Tools to $Environment environment...\" -ForegroundColor Green\n\n# Load environment-specific configuration\n$configPath = \"config\\$Environment.json\"\nif (-not (Test-Path $configPath)) {\n    throw \"Configuration file not found: $configPath\"\n}\n\n$config = Get-Content $configPath | ConvertFrom-Json\nWrite-Host \"Loaded configuration for: $($config.environment)\" -ForegroundColor Cyan\n\n# Verify environment connectivity\nif ($Verify) {\n    Write-Host \"Verifying environment connectivity...\" -ForegroundColor Yellow\n    .\\deployment\\Test-Environment.ps1 -Config $config\n}\n\n# Deploy scripts based on environment\nswitch ($Environment) {\n    'development' {\n        Write-Host \"Development deployment - including debug scripts\" -ForegroundColor Yellow\n        # Copy development-specific files\n    }\n    'staging' {\n        Write-Host \"Staging deployment - production scripts with enhanced logging\" -ForegroundColor Yellow\n        # Copy staging-specific files\n    }\n    'production' {\n        Write-Host \"Production deployment - optimized scripts only\" -ForegroundColor Red\n        # Copy production-only files, exclude debug scripts\n    }\n}\n\nWrite-Host \"Deployment completed successfully!\" -ForegroundColor Green"
+    },
+    {
+      "type": "create_file",
+      "path": "deployment/Test-Environment.ps1",
+      "content": "param(\n    [Parameter(Mandatory=$true)]\n    [PSCustomObject]$Config\n)\n\nWrite-Host \"Testing environment connectivity...\" -ForegroundColor Cyan\n\n# Test SharePoint 2019 connectivity\ntry {\n    $response = Invoke-WebRequest -Uri $Config.sharepoint.sp2019_url -UseBasicParsing -TimeoutSec 10\n    Write-Host \"✓ SharePoint 2019 accessible: $($Config.sharepoint.sp2019_url)\" -ForegroundColor Green\n} catch {\n    Write-Warning \"✗ SharePoint 2019 not accessible: $($_.Exception.Message)\"\n}\n\n# Test SharePoint 365 connectivity  \ntry {\n    $response = Invoke-WebRequest -Uri $Config.sharepoint.sp365_url -UseBasicParsing -TimeoutSec 10\n    Write-Host \"✓ SharePoint 365 accessible: $($Config.sharepoint.sp365_url)\" -ForegroundColor Green\n} catch {\n    Write-Warning \"✗ SharePoint 365 not accessible: $($_.Exception.Message)\"\n}\n\n# Test logging directory\n$logDir = Split-Path $Config.logging.file -Parent\nif (-not (Test-Path $logDir)) {\n    New-Item -Path $logDir -ItemType Directory -Force\n    Write-Host \"✓ Created logging directory: $logDir\" -ForegroundColor Green\n} else {\n    Write-Host \"✓ Logging directory exists: $logDir\" -ForegroundColor Green\n}\n\nWrite-Host \"Environment verification completed.\" -ForegroundColor Cyan"
+    }
+  ]
+}

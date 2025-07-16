@@ -1,0 +1,425 @@
+{
+  "__comment": "Test Package Configurations for PowerShell JSON Packager System",
+  "__description": "Collection of test configurations used in Pester tests for validation and integration testing",
+  
+  "basic_test_config": {
+    "package": {
+      "name": "Basic Test Package",
+      "version": "1.0.0",
+      "description": "Simple test package configuration",
+      "author": "Test Suite"
+    },
+    "files": [
+      {
+        "name": "main_scripts",
+        "source": "*.ps1",
+        "destination": "scripts",
+        "preserve_structure": false
+      }
+    ]
+  },
+  
+  "dependency_test_config": {
+    "package": {
+      "name": "Dependency Test Package",
+      "version": "1.0.0", 
+      "description": "Package for testing dependency analysis",
+      "author": "Dependency Tests"
+    },
+    "directories": ["scripts", "lib", "utils"],
+    "files": [
+      {
+        "name": "main_script",
+        "source": "Main.ps1",
+        "destination": "scripts",
+        "preserve_structure": false
+      },
+      {
+        "name": "library_files",
+        "source": "lib/*.ps1",
+        "destination": "lib",
+        "preserve_structure": true
+      },
+      {
+        "name": "utility_files",
+        "source": "utils/*.ps1", 
+        "destination": "utils",
+        "preserve_structure": false
+      }
+    ]
+  },
+  
+  "sharepoint_test_config": {
+    "$schema": "../json_packager_schema.json",
+    "package": {
+      "name": "SharePoint Test Tools",
+      "version": "2.1.0",
+      "description": "Test configuration for SharePoint file download tools",
+      "author": "Integration Test Suite",
+      "created_date": "2025-07-15",
+      "tags": ["sharepoint", "selenium", "automation", "test"]
+    },
+    
+    "directories": [
+      "scripts",
+      "lib",
+      "config", 
+      "docs",
+      "drivers"
+    ],
+    
+    "files": [
+      {
+        "name": "main_sharepoint_script",
+        "source": "Get-SharePointFile.ps1",
+        "destination": "scripts",
+        "preserve_structure": false
+      },
+      {
+        "name": "core_libraries",
+        "source": "lib/*.ps1",
+        "destination": "lib",
+        "preserve_structure": true,
+        "exclude": ["*test*", "*backup*"]
+      },
+      {
+        "name": "helper_utilities",
+        "source": "lib/helpers/*.ps1",
+        "destination": "lib/helpers",
+        "preserve_structure": false
+      },
+      {
+        "name": "utility_functions",
+        "source": "utils/*.ps1",
+        "destination": "lib/utils",
+        "preserve_structure": false
+      },
+      {
+        "name": "configuration_files",
+        "source": "config/*.json",
+        "destination": "config",
+        "preserve_structure": false,
+        "exclude": ["*secret*", "*local*"]
+      },
+      {
+        "name": "documentation",
+        "source": "*.md",
+        "destination": "docs",
+        "preserve_structure": false,
+        "exclude": ["TODO.md", "PRIVATE*.md"]
+      }
+    ],
+    
+    "post_package": [
+      {
+        "type": "create_file",
+        "path": "INSTALL.md",
+        "content": "# SharePoint Tools Installation\n\n## Quick Setup\n1. Extract package to desired location\n2. Configure settings in config/sharepoint-config.json\n3. Install Chrome WebDriver in drivers/ directory\n4. Run scripts/Get-SharePointFile.ps1\n\n## Requirements\n- PowerShell 5.1 or later\n- Chrome browser (version 90+)\n- Chrome WebDriver matching browser version\n- Network access to SharePoint sites\n\n## Testing\nRun Test-SharePointConnection to verify setup.\n\n## Support\nSee docs/README.md for detailed documentation."
+      },
+      {
+        "type": "create_file",
+        "path": "VERSION.json",
+        "content": {
+          "version": "2.1.0",
+          "build_date": "2025-07-15T13:00:00.000Z",
+          "package_name": "SharePoint Test Tools",
+          "test_configuration": true,
+          "dependencies": {
+            "powershell": ">=5.1",
+            "chrome": ">=90.0",
+            "selenium": ">=3.0"
+          }
+        }
+      }
+    ],
+    
+    "dependency_metadata": {
+      "total_files_analyzed": 8,
+      "starting_files": ["Get-SharePointFile.ps1"],
+      "unresolved_dependencies": []
+    }
+  },
+  
+  "flattened_test_config": {
+    "package": {
+      "name": "Flattened Structure Test",
+      "version": "1.0.0",
+      "description": "Test configuration for flattened directory structure with path rewriting"
+    },
+    "files": [
+      {
+        "name": "all_main_scripts",
+        "source": "*.ps1",
+        "destination": "scripts",
+        "flatten": true
+      },
+      {
+        "name": "all_lib_scripts", 
+        "source": "lib/*.ps1",
+        "destination": "scripts",
+        "flatten": true
+      },
+      {
+        "name": "all_util_scripts",
+        "source": "utils/*.ps1",
+        "destination": "scripts",
+        "flatten": true
+      },
+      {
+        "name": "helper_scripts",
+        "source": "lib/helpers/*.ps1",
+        "destination": "scripts",
+        "flatten": true
+      }
+    ],
+    "post_package": [
+      {
+        "type": "create_file",
+        "path": "FLATTENING_INFO.md",
+        "content": "# Directory Structure Flattening\n\nThis package has been configured to flatten the original directory structure.\nAll PowerShell scripts have been placed in the scripts/ directory.\n\n## Original Structure\n- Main scripts: root/*.ps1\n- Library files: lib/*.ps1\n- Utilities: utils/*.ps1  \n- Helpers: lib/helpers/*.ps1\n\n## Flattened Structure\n- All scripts: scripts/*.ps1\n\n## Path Updates\nDot-source paths have been automatically updated to work with the flattened structure.\nOriginal relative paths like './lib/Config.ps1' have been changed to './Config.ps1'."
+      }
+    ]
+  },
+  
+  "complex_validation_test": {
+    "$schema": "../json_packager_schema.json",
+    "package": {
+      "name": "Complex Validation Test Package",
+      "version": "3.2.1-beta.1",
+      "description": "Complex configuration for testing all validation scenarios",
+      "author": "JSON Schema Validation Tests",
+      "created_date": "2025-07-15",
+      "tags": ["validation", "complex", "testing", "schema"]
+    },
+    
+    "directories": [
+      "core",
+      "modules",
+      "plugins",
+      "data",
+      "templates",
+      "docs/api",
+      "docs/user",
+      "tests/unit", 
+      "tests/integration"
+    ],
+    
+    "files": [
+      {
+        "name": "core_system",
+        "source": "src/core/*.ps1",
+        "destination": "core",
+        "preserve_structure": true,
+        "exclude": ["*test*", "*backup*", "*.tmp"]
+      },
+      {
+        "name": "plugin_modules",
+        "source": "src/plugins/**/*.ps1",
+        "destination": "plugins",
+        "preserve_structure": true,
+        "exclude": ["*dev*", "*debug*"]
+      },
+      {
+        "name": "data_templates",
+        "source": "templates/**/*.json",
+        "destination": "templates", 
+        "preserve_structure": true
+      },
+      {
+        "name": "api_documentation",
+        "source": "docs/api/*.md",
+        "destination": "docs/api",
+        "preserve_structure": false
+      },
+      {
+        "name": "user_documentation",
+        "source": "docs/user/*.md",
+        "destination": "docs/user",
+        "preserve_structure": false,
+        "exclude": ["*draft*", "*internal*"]
+      },
+      {
+        "name": "test_files",
+        "source": "tests/**/*.ps1",
+        "destination": "tests",
+        "preserve_structure": true,
+        "exclude": ["*temp*", "*output*"]
+      }
+    ],
+    
+    "post_package": [
+      {
+        "type": "create_file",
+        "path": "MANIFEST.json",
+        "content": {
+          "manifest_version": "1.0",
+          "package_type": "complex_validation_test",
+          "components": [
+            "core_system",
+            "plugin_modules", 
+            "data_templates",
+            "documentation",
+            "test_suite"
+          ],
+          "validation_rules": {
+            "requires_powershell": ">=5.1",
+            "max_file_size": "100MB",
+            "allowed_extensions": [".ps1", ".json", ".md", ".txt"]
+          }
+        }
+      },
+      {
+        "type": "create_file",
+        "path": "VALIDATION_REPORT.md",
+        "content": "# Validation Test Report\n\nThis package was created to test complex validation scenarios including:\n\n- Semantic version format validation (3.2.1-beta.1)\n- Multiple directory levels\n- Complex file inclusion/exclusion patterns\n- Nested preserve_structure options\n- Multiple post-package actions\n- JSON object content in post-package actions\n\n## Schema Compliance\nThis configuration should fully comply with the PowerShell Packager JSON schema."
+      },
+      {
+        "type": "run_script",
+        "script": "./post-package-validation.ps1",
+        "arguments": ["--verify-structure", "--check-dependencies"]
+      }
+    ]
+  },
+  
+  "minimal_test_config": {
+    "package": {
+      "name": "Minimal Test",
+      "version": "1.0.0"
+    },
+    "files": [
+      {
+        "name": "single_file",
+        "source": "test.ps1", 
+        "destination": ""
+      }
+    ]
+  },
+  
+  "auto_generated_test": {
+    "package": {
+      "name": "AutoGenerated Test Package",
+      "version": "1.0.0",
+      "description": "Package configuration generated by dependency analysis",
+      "created_date": "2025-07-15",
+      "auto_generated": true,
+      "dependency_analysis": {
+        "TotalFiles": 12,
+        "StartingFiles": ["Main.ps1"],
+        "SearchPaths": [".", "./lib", "./utils"],
+        "AnalysisDate": "2025-07-15T13:00:00.000Z"
+      }
+    },
+    
+    "directories": ["scripts", "docs"],
+    
+    "files": [
+      {
+        "name": "discovered_scripts",
+        "source": "*.ps1",
+        "destination": "scripts",
+        "preserve_structure": false,
+        "exclude": ["*test*", "*backup*"]
+      },
+      {
+        "name": "library_files",
+        "source": "lib/*.ps1",
+        "destination": "scripts",
+        "preserve_structure": false
+      }
+    ],
+    
+    "dependency_metadata": {
+      "total_files_analyzed": 12,
+      "starting_files": ["Main.ps1"],
+      "unresolved_dependencies": [
+        {
+          "file": "./lib/Config.ps1",
+          "dependency": "./missing-helper.ps1",
+          "line": ". ./missing-helper.ps1"
+        }
+      ]
+    },
+    
+    "post_package": [
+      {
+        "type": "create_file",
+        "path": "AUTO_GENERATED_INFO.md",
+        "content": "# Auto-Generated Package\n\nThis package configuration was automatically generated by dependency analysis.\n\n## Analysis Results\n- Total files discovered: 12\n- Starting point: Main.ps1\n- Unresolved dependencies: 1\n\n## Manual Review Needed\nReview the unresolved dependencies listed in the dependency_metadata section."
+      }
+    ]
+  },
+  
+  "performance_test_config": {
+    "package": {
+      "name": "Performance Test Package", 
+      "version": "1.0.0",
+      "description": "Configuration for testing packaging performance with many files"
+    },
+    "files": [
+      {
+        "name": "many_scripts",
+        "source": "*.ps1",
+        "destination": "scripts",
+        "preserve_structure": false
+      },
+      {
+        "name": "many_modules",
+        "source": "modules/*.ps1",
+        "destination": "modules",
+        "preserve_structure": false
+      },
+      {
+        "name": "many_libs",
+        "source": "lib/**/*.ps1",
+        "destination": "lib",
+        "preserve_structure": true
+      }
+    ]
+  },
+  
+  "error_test_configs": {
+    "missing_required_package": {
+      "files": [
+        {
+          "name": "test",
+          "source": "*.ps1",
+          "destination": "scripts"
+        }
+      ]
+    },
+    
+    "missing_required_files": {
+      "package": {
+        "name": "Test",
+        "version": "1.0.0"
+      }
+    },
+    
+    "invalid_version_format": {
+      "package": {
+        "name": "Test Package",
+        "version": "not.a.version"
+      },
+      "files": [
+        {
+          "name": "test",
+          "source": "*.ps1", 
+          "destination": "scripts"
+        }
+      ]
+    },
+    
+    "invalid_file_structure": {
+      "package": {
+        "name": "Test Package",
+        "version": "1.0.0"
+      },
+      "files": [
+        {
+          "source": "*.ps1",
+          "destination": "scripts"
+        }
+      ]
+    }
+  }
+}

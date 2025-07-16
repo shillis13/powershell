@@ -1,0 +1,507 @@
+{
+  "__comment": "SharePoint Tools Package Configuration",
+  "__description": "Complete JSON configuration for SharePoint file download tools packaging",
+  
+  "package": {
+    "name": "SharePoint File Download Tools",
+    "version": "1.2.0",
+    "description": "PowerShell scripts for downloading files from SharePoint 2019 and 365",
+    "author": "PianoMan",
+    "created_date": "2025-07-14",
+    "tags": [
+      "sharepoint",
+      "powershell", 
+      "file-download",
+      "automation"
+    ]
+  },
+  
+  "directories": [
+    "scripts",
+    "docs", 
+    "tests",
+    "config",
+    "lib"
+  ],
+  
+  "files": [
+    {
+      "name": "core_scripts",
+      "source": "Get-SharePointFile*.ps1",
+      "destination": "scripts",
+      "preserve_structure": false,
+      "exclude": [
+        "*backup*",
+        "*temp*"
+      ]
+    },
+    {
+      "name": "library_scripts", 
+      "source": "lib_*.ps1",
+      "destination": "lib",
+      "preserve_structure": false,
+      "exclude": [
+        "*test*"
+      ]
+    },
+    {
+      "name": "documentation",
+      "source": "*.md",
+      "destination": "docs", 
+      "preserve_structure": false,
+      "exclude": [
+        "TODO.md",
+        "PRIVATE*.md"
+      ]
+    },
+    {
+      "name": "test_files",
+      "source": "test*.*",
+      "destination": "tests",
+      "preserve_structure": true,
+      "exclude": [
+        "*.tmp",
+        "test-results*"
+      ]
+    },
+    {
+      "name": "config_templates",
+      "source": "config/*.template.*",
+      "destination": "config",
+      "preserve_structure": false
+    },
+    {
+      "name": "root_files",
+      "source": "README*.md",
+      "destination": "",
+      "flatten": true
+    },
+    {
+      "name": "dependencies",
+      "source": "drivers/*",
+      "destination": "drivers",
+      "preserve_structure": true
+    }
+  ],
+  
+  "post_package": [
+    {
+      "type": "create_file",
+      "path": "INSTALL.md",
+      "content": "# SharePoint Tools Installation\n\n## Quick Start\n1. Copy scripts to your PowerShell modules path\n2. Import the main module: `Import-Module .\\scripts\\Get-SharePointFile.ps1`\n3. Run setup: `.\\scripts\\Setup-SharePointTools.ps1`\n\n## Requirements\n- PowerShell 5.1 or later\n- Selenium PowerShell module\n- Chrome browser\n\n## Usage\nSee docs/README.md for detailed usage instructions."
+    },
+    {
+      "type": "create_file", 
+      "path": "VERSION.json",
+      "content": {
+        "version": "1.2.0",
+        "build_date": "2025-07-14T22:00:00Z",
+        "package_name": "SharePoint File Download Tools"
+      }
+    },
+    {
+      "type": "zip_package",
+      "name": "sharepoint-tools-v1.2.0"
+    }
+  ]
+}
+
+{
+  "__comment": "Installation Configuration", 
+  "__description": "Separate JSON file for installation settings",
+  
+  "install": {
+    "name": "SharePoint Tools Installation",
+    "version": "1.2.0",
+    "target_type": "powershell_module"
+  },
+  
+  "destinations": [
+    {
+      "source": "scripts/*",
+      "target": "$env:PSModulePath\\SharePointTools\\Scripts",
+      "create_path": true
+    },
+    {
+      "source": "lib/*",
+      "target": "$env:PSModulePath\\SharePointTools\\Lib", 
+      "create_path": true
+    },
+    {
+      "source": "docs/*",
+      "target": "$env:USERPROFILE\\Documents\\SharePointTools\\Docs",
+      "create_path": true
+    },
+    {
+      "source": "tests/*",
+      "target": ".\\SharePointTools-Dev\\Tests",
+      "create_path": true,
+      "optional": true
+    }
+  ],
+  
+  "pre_install": [
+    {
+      "type": "check_powershell_version",
+      "minimum": "5.1"
+    },
+    {
+      "type": "check_module",
+      "name": "Selenium",
+      "install_if_missing": true
+    },
+    {
+      "type": "check_chrome",
+      "minimum_version": "90.0"
+    }
+  ],
+  
+  "post_install": [
+    {
+      "type": "create_module_manifest",
+      "path": "$env:PSModulePath\\SharePointTools\\SharePointTools.psd1"
+    },
+    {
+      "type": "register_module",
+      "name": "SharePointTools"
+    },
+    {
+      "type": "create_shortcut",
+      "name": "SharePoint Tools Documentation",
+      "target": "$env:USERPROFILE\\Documents\\SharePointTools\\Docs\\README.md"
+    }
+  ],
+  
+  "uninstall": {
+    "remove_paths": [
+      "$env:PSModulePath\\SharePointTools",
+      "$env:USERPROFILE\\Documents\\SharePointTools"
+    ],
+    "registry_cleanup": false
+  }
+}
+
+{
+  "__comment": "Simple Script Package Example",
+  "__description": "Minimal configuration for single script deployment",
+  
+  "package": {
+    "name": "Console Key Handler",
+    "version": "1.0.0", 
+    "description": "PowerShell console key handling utilities",
+    "author": "Developer"
+  },
+  
+  "files": [
+    {
+      "name": "main_script",
+      "source": "Get-KeyPressed.ps1",
+      "destination": ""
+    },
+    {
+      "name": "docs",
+      "source": "README.md", 
+      "destination": ""
+    }
+  ],
+  
+  "post_package": [
+    {
+      "type": "create_file",
+      "path": "run.cmd",
+      "content": "@echo off\npowershell -ExecutionPolicy Bypass -File \"Get-KeyPressed.ps1\"\npause"
+    }
+  ]
+}
+
+{
+  "__comment": "Web Application Package Example",
+  "__description": "Configuration for web application deployment",
+  
+  "package": {
+    "name": "Internal Web Dashboard",
+    "version": "2.1.0",
+    "description": "Company internal dashboard application"
+  },
+  
+  "directories": [
+    "app",
+    "config", 
+    "static/css",
+    "static/js",
+    "static/images",
+    "templates",
+    "data"
+  ],
+  
+  "files": [
+    {
+      "name": "app_code",
+      "source": "src/*.py",
+      "destination": "app",
+      "preserve_structure": false
+    },
+    {
+      "name": "css_files",
+      "source": "static/css/*",
+      "destination": "static/css",
+      "preserve_structure": false
+    },
+    {
+      "name": "js_files", 
+      "source": "static/js/*",
+      "destination": "static/js",
+      "preserve_structure": false
+    },
+    {
+      "name": "images",
+      "source": "static/images/*",
+      "destination": "static/images",
+      "preserve_structure": false
+    },
+    {
+      "name": "templates",
+      "source": "templates/*.html",
+      "destination": "templates",
+      "preserve_structure": false
+    },
+    {
+      "name": "config",
+      "source": "config/*.json",
+      "destination": "config",
+      "preserve_structure": false,
+      "exclude": [
+        "config/secrets*",
+        "config/local*"
+      ]
+    },
+    {
+      "name": "setup_files",
+      "source": "requirements.txt",
+      "destination": ""
+    },
+    {
+      "name": "readme",
+      "source": "README.md",
+      "destination": ""
+    }
+  ],
+  
+  "post_package": [
+    {
+      "type": "create_file",
+      "path": "start.sh",
+      "content": "#!/bin/bash\npython3 -m venv venv\nsource venv/bin/activate\npip install -r requirements.txt\npython app/main.py"
+    },
+    {
+      "type": "create_file",
+      "path": "start.bat", 
+      "content": "@echo off\npython -m venv venv\ncall venv\\Scripts\\activate\npip install -r requirements.txt\npython app\\main.py\npause"
+    }
+  ]
+}
+
+{
+  "__comment": "Auto-Generated Package Configuration Example",
+  "__description": "Example of configuration generated by dependency analysis",
+  
+  "package": {
+    "name": "SharePointTools",
+    "version": "1.0.0",
+    "description": "Auto-generated package from dependency analysis",
+    "created_date": "2025-07-14",
+    "auto_generated": true,
+    "dependency_analysis": {
+      "TotalFiles": 5,
+      "StartingFiles": ["Get-SharePointFile.ps1"],
+      "SearchPaths": [".", "./lib"],
+      "AnalysisDate": "2025-07-14T22:35:00.000Z"
+    }
+  },
+  
+  "directories": [
+    "scripts",
+    "docs"
+  ],
+  
+  "files": [
+    {
+      "name": "main_scripts",
+      "source": "*.ps1",
+      "destination": "scripts", 
+      "preserve_structure": false
+    }
+  ],
+  
+  "dependency_metadata": {
+    "total_files_analyzed": 5,
+    "starting_files": ["Get-SharePointFile.ps1"],
+    "unresolved_dependencies": [
+      {
+        "file": "C:\\Projects\\SharePoint\\Get-SharePointFile.ps1",
+        "dependency": "./lib/missing-file.ps1",
+        "line": ". ./lib/missing-file.ps1"
+      }
+    ]
+  }
+}
+
+{
+  "__comment": "Flattened Package Example",
+  "__description": "Configuration that flattens directory structure with path rewriting",
+  
+  "package": {
+    "name": "Flattened Example",
+    "version": "1.0.0"
+  },
+  
+  "files": [
+    {
+      "name": "all_scripts",
+      "source": "*.ps1", 
+      "destination": "scripts",
+      "flatten": true
+    },
+    {
+      "name": "lib_scripts",
+      "source": "lib/*.ps1",
+      "destination": "scripts",
+      "flatten": true
+    },
+    {
+      "name": "helper_scripts",
+      "source": "lib/helpers/*.ps1",
+      "destination": "scripts", 
+      "flatten": true
+    }
+  ]
+}
+
+{
+  "__comment": "Template Generation Example",
+  "__description": "Shows how to create template configurations programmatically",
+  
+  "template_info": {
+    "generated_by": "New-PackageConfigTemplate",
+    "template_type": "comprehensive",
+    "creation_date": "2025-07-14T22:35:00.000Z"
+  },
+  
+  "package": {
+    "name": "Template Package",
+    "version": "1.0.0",
+    "description": "Comprehensive package configuration template",
+    "author": "System",
+    "created_date": "2025-07-14",
+    "tags": [
+      "powershell",
+      "deployment", 
+      "template"
+    ]
+  },
+  
+  "directories": [
+    "scripts",
+    "docs",
+    "tests",
+    "config"
+  ],
+  
+  "files": [
+    {
+      "name": "core_scripts",
+      "source": "*.ps1",
+      "destination": "scripts",
+      "preserve_structure": false,
+      "exclude": [
+        "*backup*",
+        "*temp*"
+      ]
+    },
+    {
+      "name": "library_scripts",
+      "source": "lib/*.ps1", 
+      "destination": "lib",
+      "preserve_structure": false
+    },
+    {
+      "name": "documentation",
+      "source": "*.md",
+      "destination": "docs",
+      "preserve_structure": false,
+      "exclude": [
+        "TODO.md",
+        "PRIVATE*.md"
+      ]
+    }
+  ],
+  
+  "post_package": [
+    {
+      "type": "create_file",
+      "path": "INSTALL.md",
+      "content": "# Installation Instructions\n\nCopy scripts to your PowerShell path and import the main module."
+    },
+    {
+      "type": "create_file",
+      "path": "VERSION.json",
+      "content": {
+        "version": "1.0.0",
+        "build_date": "2025-07-14T22:35:00.000Z",
+        "package_name": "Template Package"
+      }
+    }
+  ]
+}
+
+{
+  "__comment": "Advanced Multi-Format Support Example",
+  "__description": "Shows abstraction layer supporting both JSON and YAML (future)",
+  
+  "config_metadata": {
+    "format": "json",
+    "schema_version": "1.0",
+    "supports_templating": true,
+    "variable_substitution": false
+  },
+  
+  "package": {
+    "name": "${PACKAGE_NAME:-Multi-Platform Tools}",
+    "version": "3.0.0",
+    "description": "Advanced packaging with conditional logic support"
+  },
+  
+  "conditional_groups": {
+    "__comment": "Future enhancement - conditional packaging based on environment",
+    "windows": {
+      "condition": "$env:OS -eq 'Windows_NT'",
+      "files": [
+        {
+          "name": "windows_scripts",
+          "source": "platform/windows/*.ps1",
+          "destination": "scripts"
+        }
+      ]
+    },
+    "linux": {
+      "condition": "$env:OS -ne 'Windows_NT'",
+      "files": [
+        {
+          "name": "linux_scripts", 
+          "source": "platform/linux/*.sh",
+          "destination": "scripts"
+        }
+      ]
+    }
+  },
+  
+  "template_processing": {
+    "__comment": "Future enhancement - template variable substitution",
+    "enabled": false,
+    "variables": {
+      "app_name": "{{ package.name }}",
+      "version": "{{ package.version }}",
+      "install_date": "{{ current_date }}"
+    }
+  }
+}

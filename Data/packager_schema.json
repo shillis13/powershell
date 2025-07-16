@@ -1,0 +1,425 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://your-org.com/schemas/powershell-packager-config.schema.json",
+  "title": "PowerShell Packager Configuration",
+  "description": "Schema for PowerShell project packaging configuration files",
+  "type": "object",
+  "required": ["package", "files"],
+  
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON schema reference for validation and IDE support"
+    },
+    
+    "package": {
+      "type": "object",
+      "description": "Package metadata and identification",
+      "required": ["name", "version"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Package name (used in manifest and output)",
+          "minLength": 1,
+          "examples": ["SharePoint Tools", "My PowerShell Module"]
+        },
+        "version": {
+          "type": "string",
+          "description": "Semantic version number",
+          "pattern": "^\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9.-]+)?(\\+[a-zA-Z0-9.-]+)?$",
+          "examples": ["1.0.0", "2.1.3-beta", "1.0.0-rc.1+build.123"]
+        },
+        "description": {
+          "type": "string",
+          "description": "Brief package description",
+          "examples": ["PowerShell utilities for SharePoint automation"]
+        },
+        "author": {
+          "type": "string",
+          "description": "Package author name",
+          "examples": ["John Doe", "Development Team"]
+        },
+        "created_date": {
+          "type": "string",
+          "description": "Package creation date",
+          "format": "date",
+          "examples": ["2025-07-14"]
+        },
+        "tags": {
+          "type": "array",
+          "description": "Tags for categorization and search",
+          "items": {
+            "type": "string"
+          },
+          "examples": [["powershell", "sharepoint", "automation"]]
+        },
+        "auto_generated": {
+          "type": "boolean",
+          "description": "Flag indicating if config was auto-generated from dependency analysis",
+          "default": false
+        },
+        "dependency_analysis": {
+          "type": "object",
+          "description": "Metadata from dependency analysis (if auto-generated)",
+          "properties": {
+            "TotalFiles": {
+              "type": "integer",
+              "description": "Number of files discovered in analysis"
+            },
+            "StartingFiles": {
+              "type": "array",
+              "description": "Files used as entry points for analysis",
+              "items": {
+                "type": "string"
+              }
+            },
+            "SearchPaths": {
+              "type": "array",
+              "description": "Directories searched during analysis",
+              "items": {
+                "type": "string"
+              }
+            },
+            "AnalysisDate": {
+              "type": "string",
+              "description": "When dependency analysis was performed",
+              "format": "date-time"
+            }
+          }
+        }
+      }
+    },
+    
+    "directories": {
+      "type": "array",
+      "description": "Directories to create in the package (inferred from file destinations if not specified)",
+      "items": {
+        "type": "string",
+        "pattern": "^[^<>:\"|?*\\r\\n]+$"
+      },
+      "examples": [["scripts", "docs", "tests", "config", "lib"]]
+    },
+    
+    "files": {
+      "type": "array",
+      "description": "File groups to include in the package",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "source", "destination"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Unique identifier for this file group",
+            "pattern": "^[a-zA-Z][a-zA-Z0-9_-]*$",
+            "examples": ["core_scripts", "documentation", "test_files"]
+          },
+          "source": {
+            "type": "string",
+            "description": "Source file pattern (supports wildcards)",
+            "minLength": 1,
+            "examples": ["*.ps1", "lib/*.ps1", "docs/**/*.md", "Get-SharePointFile.ps1"]
+          },
+          "destination": {
+            "type": "string",
+            "description": "Destination directory within package (empty string for root)",
+            "examples": ["scripts", "lib", "docs", ""]
+          },
+          "preserve_structure": {
+            "type": "boolean",
+            "description": "Maintain source directory structure in destination",
+            "default": false
+          },
+          "flatten": {
+            "type": "boolean",
+            "description": "Flatten all files to destination root (overrides preserve_structure)",
+            "default": false
+          },
+          "exclude": {
+            "type": "array",
+            "description": "Patterns for files to exclude from this group",
+            "items": {
+              "type": "string"
+            },
+            "examples": [["*backup*", "*temp*", "*.tmp", "test-results*"]]
+          }
+        }
+      }
+    },
+    
+    "post_package": {
+      "type": "array",
+      "description": "Actions to execute after packaging is complete",
+      "items": {
+        "type": "object",
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Type of post-package action",
+            "enum": ["create_file", "zip_package", "run_script", "template_file"]
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "create_file"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "description": "Relative path for the file to create",
+                  "examples": ["INSTALL.md", "VERSION.json", "run.cmd"]
+                },
+                "content": {
+                  "description": "File content (string or object for JSON files)",
+                  "oneOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "object"
+                    }
+                  ]
+                }
+              },
+              "required": ["path", "content"]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "zip_package"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Name for the ZIP file (without .zip extension)",
+                  "examples": ["sharepoint-tools-v1.2.0", "package-release"]
+                }
+              },
+              "required": ["name"]
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "type": {
+                  "const": "run_script"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "script": {
+                  "type": "string",
+                  "description": "Path to script to execute",
+                  "examples": ["scripts/post-package.ps1", "./finalize.cmd"]
+                },
+                "arguments": {
+                  "type": "array",
+                  "description": "Arguments to pass to the script",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": ["script"]
+            }
+          }
+        ]
+      }
+    },
+    
+    "dependency_metadata": {
+      "type": "object",
+      "description": "Metadata about discovered dependencies (populated by dependency analysis)",
+      "properties": {
+        "total_files_analyzed": {
+          "type": "integer",
+          "description": "Total number of files processed during analysis",
+          "minimum": 0
+        },
+        "starting_files": {
+          "type": "array",
+          "description": "Entry point files for dependency analysis",
+          "items": {
+            "type": "string"
+          }
+        },
+        "unresolved_dependencies": {
+          "type": "array",
+          "description": "Dependencies that could not be resolved during analysis",
+          "items": {
+            "type": "object",
+            "properties": {
+              "file": {
+                "type": "string",
+                "description": "Source file containing the unresolved dependency"
+              },
+              "dependency": {
+                "type": "string",
+                "description": "The dependency path that could not be resolved"
+              },
+              "line": {
+                "type": "string",
+                "description": "The actual line from the source file"
+              }
+            },
+            "required": ["file", "dependency", "line"]
+          }
+        }
+      }
+    },
+    
+    "install": {
+      "type": "object",
+      "description": "Installation configuration (used in install-specific configs)",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Installation process name"
+        },
+        "version": {
+          "type": "string",
+          "description": "Version being installed",
+          "pattern": "^\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9.-]+)?(\\+[a-zA-Z0-9.-]+)?$"
+        },
+        "target_type": {
+          "type": "string",
+          "description": "Type of installation target",
+          "enum": ["powershell_module", "standalone", "system_tools", "user_tools"]
+        }
+      }
+    },
+    
+    "destinations": {
+      "type": "array",
+      "description": "Installation destination mappings (used in install-specific configs)",
+      "items": {
+        "type": "object",
+        "required": ["source", "target"],
+        "properties": {
+          "source": {
+            "type": "string",
+            "description": "Source pattern within package"
+          },
+          "target": {
+            "type": "string",
+            "description": "Target installation path (supports environment variables)"
+          },
+          "create_path": {
+            "type": "boolean",
+            "description": "Create target directory if it doesn't exist",
+            "default": false
+          },
+          "optional": {
+            "type": "boolean",
+            "description": "Installation continues if this destination fails",
+            "default": false
+          }
+        }
+      }
+    },
+    
+    "pre_install": {
+      "type": "array",
+      "description": "Checks and preparations before installation",
+      "items": {
+        "type": "object",
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["check_powershell_version", "check_module", "check_chrome", "check_file", "check_registry"]
+          },
+          "minimum": {
+            "type": "string",
+            "description": "Minimum version requirement (for version checks)"
+          },
+          "name": {
+            "type": "string",
+            "description": "Name of module, file, or registry key to check"
+          },
+          "install_if_missing": {
+            "type": "boolean",
+            "description": "Attempt to install if missing (for modules)",
+            "default": false
+          }
+        }
+      }
+    },
+    
+    "post_install": {
+      "type": "array",
+      "description": "Actions to perform after successful installation",
+      "items": {
+        "type": "object",
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["create_module_manifest", "register_module", "create_shortcut", "update_registry", "run_command"]
+          },
+          "path": {
+            "type": "string",
+            "description": "File or registry path for the action"
+          },
+          "name": {
+            "type": "string",
+            "description": "Name for shortcuts, modules, or registry entries"
+          },
+          "target": {
+            "type": "string",
+            "description": "Target for shortcuts or commands"
+          }
+        }
+      }
+    },
+    
+    "uninstall": {
+      "type": "object",
+      "description": "Uninstallation instructions",
+      "properties": {
+        "remove_paths": {
+          "type": "array",
+          "description": "Paths to remove during uninstallation",
+          "items": {
+            "type": "string"
+          }
+        },
+        "registry_cleanup": {
+          "type": "boolean",
+          "description": "Whether to clean up registry entries",
+          "default": false
+        }
+      }
+    }
+  },
+  
+  "examples": [
+    {
+      "package": {
+        "name": "SharePoint Tools",
+        "version": "1.2.0",
+        "description": "PowerShell automation tools for SharePoint"
+      },
+      "files": [
+        {
+          "name": "core_scripts",
+          "source": "*.ps1",
+          "destination": "scripts"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,442 @@
+#Requires -Modules Pester
+
+#========================================
+# JsonValidation.Tests.ps1
+# Pester tests for JSON schema validation functionality
+#========================================
+
+BeforeAll {
+    # Import the JSON schema validator
+    $ValidatorPath = Join-Path $PSScriptRoot "Compare-ToJsonSchema.ps1"
+    if (Test-Path $ValidatorPath) {
+        . $ValidatorPath
+    } else {
+        Write-Warning "Compare-ToJsonSchema.ps1 not found at: $ValidatorPath"
+    }
+    
+    # Import test utilities
+    $TestUtilitiesPath = Join-Path $PSScriptRoot "TestUtilities.ps1"
+    if (Test-Path $TestUtilitiesPath) {
+        . $TestUtilitiesPath
+    } else {
+        throw "Cannot find TestUtilities.ps1 at: $TestUtilitiesPath"
+    }
+    
+    # Set up test environment
+    $Global:TestBaseDir = Get-TestTempDirectory -Prefix "JsonValidationTest"
+    Write-Host "Test directory: $Global:TestBaseDir" -ForegroundColor Green
+    
+    # Copy schema file if it exists
+    $SchemaPath = Join-Path $PSScriptRoot "json_packager_schema.json"
+    if (Test-Path $SchemaPath) {
+        $Global:TestSchema = Join-Path $Global:TestBaseDir "test-schema.json"
+        Copy-Item -Path $SchemaPath -Destination $Global:TestSchema
+    } else {
+        # Create a simple test schema
+        $Global:TestSchema = Join-Path $Global:TestBaseDir "simple-schema.json"
+        $simpleSchema = @{
+            '$schema' = "http://json-schema.org/draft-07/schema#"
+            type = "object"
+            required = @("package", "files")
+            properties = @{
+                package = @{
+                    type = "object"
+                    required = @("name", "version")
+                    properties = @{
+                        name = @{ type = "string"; minLength = 1 }
+                        version = @{ type = "string"; pattern = "^\d+\.\d+\.\d+$" }
+                        description = @{ type = "string" }
+                    }
+                }
+                files = @{
+                    type = "array"
+                    minItems = 1
+                    items = @{
+                        type = "object"
+                        required = @("name", "source", "destination")
+                        properties = @{
+                            name = @{ type = "string" }
+                            source = @{ type = "string" }
+                            destination = @{ type = "string" }
+                            preserve_structure = @{ type = "boolean"; default = $false }
+                        }
+                    }
+                }
+            }
+        }
+        $simpleSchema | ConvertTo-Json -Depth 10 | Out-File -FilePath $Global:TestSchema -Encoding UTF8
+    }
+}
+
+AfterAll {
+    # Clean up test environment
+    if ($Global:TestBaseDir -and (Test-Path $Global:TestBaseDir)) {
+        Remove-TestDirectory -Path $Global:TestBaseDir
+    }
+}
+
+Describe "Compare-ToJsonSchema" -Skip:(-not (Get-Command Compare-ToJsonSchema -ErrorAction SilentlyContinue)) {
+    Context "Valid JSON validation" {
+        BeforeAll {
+            # Create valid test configurations
+            $Script:ValidBasicConfig = @{
+                package = @{
+                    name = "Test Package"
+                    version = "1.0.0"
+                    description = "A test package"
+                }
+                files = @(
+                    @{
+                        name = "scripts"
+                        source = "*.ps1"
+                        destination = "scripts"
+                        preserve_structure = $false
+                    }
+                )
+            }
+            
+            $Script:ValidBasicPath = Join-Path $Global:TestBaseDir "valid-basic.json"
+            $Script:ValidBasicConfig | ConvertTo-Json -Depth 10 | Out-File -FilePath $Script:ValidBasicPath -Encoding UTF8
+        }
+        
+        It "Should validate correct JSON against schema" {
+            $result = Compare-ToJsonSchema -JsonPath $Script:ValidBasicPath -SchemaPath $Global:TestSchema
+            
+            $result | Should -Not -BeNullOrEmpty
+            $result.IsValid | Should -Be $true
+            $result.Errors.Count | Should -Be 0
+        }
+        
+        It "Should provide validation metrics" {
+            $result = Compare-ToJsonSchema -JsonPath $Script:ValidBasicPath -SchemaPath $Global:TestSchema
+            
+            $result.Statistics | Should -Not -BeNullOrEmpty
+            $result.Statistics.TotalFields | Should -BeGreaterThan 0
+            $result.Statistics.ValidationTime | Should -Not -BeNullOrEmpty
+        }
+        
+        It "Should validate JSON content directly" {
+            $jsonContent = $Script:ValidBasicConfig | ConvertTo-Json -Depth 10
+            $result = Compare-ToJsonSchema -JsonContent $jsonContent -SchemaPath $Global:TestSchema
+            
+            $result.IsValid | Should -Be $true
+        }
+    }
+    
+    Context "Invalid JSON validation" {
+        It "Should detect missing required fields" {
+            $invalidConfig = @{
+                package = @{
+                    name = "Test Package"
+                    # Missing version
+                }
+                files = @(
+                    @{
+                        name = "scripts"
+                        source = "*.ps1"
+                        destination = "scripts"
+                    }
+                )
+            }
+            
+            $invalidPath = Join-Path $Global:TestBaseDir "invalid-missing.json"
+            $invalidConfig | ConvertTo-Json -Depth 10 | Out-File -FilePath $invalidPath -Encoding UTF8
+            
+            $result = Compare-ToJsonSchema -JsonPath $invalidPath -SchemaPath $Global:TestSchema
+            
+            $result.IsValid | Should -Be $false
+            $result.Errors.Count | Should -BeGreaterThan 0
+        }
+        
+        It "Should detect type mismatches" {
+            $invalidConfig = @{
+                package = @{
+                    name = 123  # Should be string
+                    version = "1.0.0"
+                }
+                files = "not an array"  # Should be array
+            }
+            
+            $invalidPath = Join-Path $Global:TestBaseDir "invalid-types.json"
+            $invalidConfig | ConvertTo-Json -Depth 10 | Out-File -FilePath $invalidPath -Encoding UTF8
+            
+            $result = Compare-ToJsonSchema -JsonPath $invalidPath -SchemaPath $Global:TestSchema
+            
+            $result.IsValid | Should -Be $false
+            $result.Errors | Should -Not -BeNullOrEmpty
+        }
+        
+        It "Should detect pattern violations" {
+            $invalidConfig = @{
+                package = @{
+                    name = "Test Package"
+                    version = "invalid-version"  # Should match semantic version pattern
+                }
+                files = @(
+                    @{
+                        name = "scripts"
+                        source = "*.ps1"
+                        destination = "scripts"
+                    }
+                )
+            }
+            
+            $invalidPath = Join-Path $Global:TestBaseDir "invalid-pattern.json"
+            $invalidConfig | ConvertTo-Json -Depth 10 | Out-File -FilePath $invalidPath -Encoding UTF8
+            
+            $result = Compare-ToJsonSchema -JsonPath $invalidPath -SchemaPath $Global:TestSchema
+            
+            $result.IsValid | Should -Be $false
+        }
+        
+        It "Should detect array constraint violations" {
+            $invalidConfig = @{
+                package = @{
+                    name = "Test Package"
+                    version = "1.0.0"
+                }
+                files = @()  # Empty array, but minItems = 1
+            }
+            
+            $invalidPath = Join-Path $Global:TestBaseDir "invalid-array.json"
+            $invalidConfig | ConvertTo-Json -Depth 10 | Out-File -FilePath $invalidPath -Encoding UTF8
+            
+            $result = Compare-ToJsonSchema -JsonPath $invalidPath -SchemaPath $Global:TestSchema
+            
+            $result.IsValid | Should -Be $false
+        }
+    }
+    
+    Context "Error reporting" {
+        It "Should provide detailed error information" {
+            $invalidConfig = @{
+                package = @{
+                    name = ""  # Empty string violates minLength
+                    version = "1.0.0"
+                }
+                files = @(
+                    @{
+                        name = "scripts"
+                        # Missing source and destination
+                    }
+                )
+            }
+            
+            $invalidPath = Join-Path $Global:TestBaseDir "detailed-errors.json"
+            $invalidConfig | ConvertTo-Json -Depth 10 | Out-File -FilePath $invalidPath -Encoding UTF8
+            
+            $result = Compare-ToJsonSchema -JsonPath $invalidPath -SchemaPath $Global:TestSchema
+            
+            $result.IsValid | Should -Be $false
+            $result.Errors.Count | Should -BeGreaterThan 1
+            
+            # Each error should have path and message
+            foreach ($error in $result.Errors) {
+                $error.Path | Should -Not -BeNullOrEmpty
+                $error.Message | Should -Not -BeNullOrEmpty
+            }
+        }
+        
+        It "Should handle different output formats" {
+            $invalidConfig = @{ package = @{ name = "Test" }; files = @() }
+            $invalidPath = Join-Path $Global:TestBaseDir "format-test.json"
+            $invalidConfig | ConvertTo-Json | Out-File -FilePath $invalidPath -Encoding UTF8
+            
+            # Test summary format
+            $summaryResult = Compare-ToJsonSchema -JsonPath $invalidPath -SchemaPath $Global:TestSchema -OutputFormat Summary
+            $summaryResult.IsValid | Should -Be $false
+            
+            # Test detailed format
+            $detailedResult = Compare-ToJsonSchema -JsonPath $invalidPath -SchemaPath $Global:TestSchema -OutputFormat Detailed
+            $detailedResult.IsValid | Should -Be $false
+        }
+    }
+    
+    Context "File handling" {
+        It "Should handle non-existent JSON files" {
+            $nonExistentPath = Join-Path $Global:TestBaseDir "non-existent.json"
+            
+            { Compare-ToJsonSchema -JsonPath $nonExistentPath -SchemaPath $Global:TestSchema } | Should -Throw
+        }
+        
+        It "Should handle non-existent schema files" {
+            $validPath = Join-Path $Global:TestBaseDir "valid-for-missing-schema.json"
+            @{ test = "value" } | ConvertTo-Json | Out-File -FilePath $validPath -Encoding UTF8
+            
+            $nonExistentSchema = Join-Path $Global:TestBaseDir "non-existent-schema.json"
+            
+            { Compare-ToJsonSchema -JsonPath $validPath -SchemaPath $nonExistentSchema } | Should -Throw
+        }
+        
+        It "Should handle invalid JSON files" {
+            $invalidJsonPath = Join-Path $Global:TestBaseDir "malformed.json"
+            "{ invalid json content without closing brace" | Out-File -FilePath $invalidJsonPath -Encoding UTF8
+            
+            { Compare-ToJsonSchema -JsonPath $invalidJsonPath -SchemaPath $Global:TestSchema } | Should -Throw
+        }
+        
+        It "Should handle invalid schema files" {
+            $invalidSchemaPath = Join-Path $Global:TestBaseDir "invalid-schema.json"
+            "{ not a valid schema" | Out-File -FilePath $invalidSchemaPath -Encoding UTF8
+            
+            $validPath = Join-Path $Global:TestBaseDir "valid-for-invalid-schema.json"
+            @{ test = "value" } | ConvertTo-Json | Out-File -FilePath $validPath -Encoding UTF8
+            
+            { Compare-ToJsonSchema -JsonPath $validPath -SchemaPath $invalidSchemaPath } | Should -Throw
+        }
+    }
+}
+
+Describe "Package Configuration Schema Validation" {
+    Context "Real package configurations" {
+        BeforeAll {
+            # Use the actual packager schema if available
+            $ActualSchemaPath = Join-Path $PSScriptRoot "json_packager_schema.json"
+            if (Test-Path $ActualSchemaPath) {
+                $Script:PackagerSchema = $ActualSchemaPath
+            } else {
+                $Script:PackagerSchema = $Global:TestSchema
+            }
+        }
+        
+        It "Should validate basic package configuration" -Skip:(-not (Get-Command Compare-ToJsonSchema -ErrorAction SilentlyContinue)) {
+            $basicConfigPath = Join-Path $Global:TestBaseDir "basic-package.json"
+            New-TestPackageConfig -OutputPath $basicConfigPath -ConfigType "Basic"
+            
+            $result = Compare-ToJsonSchema -JsonPath $basicConfigPath -SchemaPath $Script:PackagerSchema
+            
+            $result.IsValid | Should -Be $true
+        }
+        
+        It "Should validate complex package configuration" -Skip:(-not (Get-Command Compare-ToJsonSchema -ErrorAction SilentlyContinue)) {
+            $complexConfigPath = Join-Path $Global:TestBaseDir "complex-package.json"
+            New-TestPackageConfig -OutputPath $complexConfigPath -ConfigType "Complex"
+            
+            $result = Compare-ToJsonSchema -JsonPath $complexConfigPath -SchemaPath $Script:PackagerSchema
+            
+            $result.IsValid | Should -Be $true
+        }
+        
+        It "Should validate flattened package configuration" -Skip:(-not (Get-Command Compare-ToJsonSchema -ErrorAction SilentlyContinue)) {
+            $flattenedConfigPath = Join-Path $Global:TestBaseDir "flattened-package.json"
+            New-TestPackageConfig -OutputPath $flattenedConfigPath -ConfigType "Flattened"
+            
+            $result = Compare-ToJsonSchema -JsonPath $flattenedConfigPath -SchemaPath $Script:PackagerSchema
+            
+            $result.IsValid | Should -Be $true
+        }
+    }
+    
+    Context "Configuration validation edge cases" {
+        It "Should reject configuration with invalid semantic version" -Skip:(-not (Get-Command Compare-ToJsonSchema -ErrorAction SilentlyContinue)) {
+            $invalidVersionConfig = @{
+                package = @{
+                    name = "Test Package"
+                    version = "not.a.version"
+                }
+                files = @(
+                    @{
+                        name = "scripts"
+                        source = "*.ps1"
+                        destination = "scripts"
+                    }
+                )
+            }
+            
+            $invalidVersionPath = Join-Path $Global:TestBaseDir "invalid-version.json"
+            $invalidVersionConfig | ConvertTo-Json -Depth 10 | Out-File -FilePath $invalidVersionPath -Encoding UTF8
+            
+            $result = Compare-ToJsonSchema -JsonPath $invalidVersionPath -SchemaPath $Script:PackagerSchema
+            
+            $result.IsValid | Should -Be $false
+        }
+        
+        It "Should handle configurations with unknown properties gracefully" -Skip:(-not (Get-Command Compare-ToJsonSchema -ErrorAction SilentlyContinue)) {
+            $unknownPropsConfig = @{
+                package = @{
+                    name = "Test Package"
+                    version = "1.0.0"
+                    unknown_property = "should be ignored or flagged"
+                }
+                files = @(
+                    @{
+                        name = "scripts"
+                        source = "*.ps1"
+                        destination = "scripts"
+                        unknown_file_property = "test"
+                    }
+                )
+                unknown_root_property = "test"
+            }
+            
+            $unknownPropsPath = Join-Path $Global:TestBaseDir "unknown-props.json"
+            $unknownPropsConfig | ConvertTo-Json -Depth 10 | Out-File -FilePath $unknownPropsPath -Encoding UTF8
+            
+            # This should either pass (if additionalProperties is allowed) or fail gracefully
+            $result = Compare-ToJsonSchema -JsonPath $unknownPropsPath -SchemaPath $Script:PackagerSchema -ErrorAction SilentlyContinue
+            
+            $result | Should -Not -BeNullOrEmpty
+            $result.IsValid | Should -BeIn @($true, $false)  # Either is acceptable
+        }
+    }
+}
+
+Describe "Built-in PowerShell JSON validation" {
+    Context "Basic JSON validation without external tools" {
+        It "Should validate JSON syntax using built-in PowerShell" {
+            $validJson = @{ name = "test"; version = "1.0.0" } | ConvertTo-Json
+            
+            { $validJson | ConvertFrom-Json } | Should -Not -Throw
+        }
+        
+        It "Should detect malformed JSON using built-in PowerShell" {
+            $malformedJson = "{ 'name': 'test', 'version': }"
+            
+            { $malformedJson | ConvertFrom-Json } | Should -Throw
+        }
+        
+        It "Should validate required properties exist" {
+            $config = @{
+                package = @{
+                    name = "Test"
+                    version = "1.0.0"
+                }
+                files = @(
+                    @{
+                        name = "test"
+                        source = "*.ps1"
+                        destination = "scripts"
+                    }
+                )
+            }
+            
+            # Manual validation of required properties
+            $config.package | Should -Not -BeNullOrEmpty
+            $config.package.name | Should -Not -BeNullOrEmpty
+            $config.package.version | Should -Not -BeNullOrEmpty
+            $config.files | Should -Not -BeNullOrEmpty
+            $config.files.Count | Should -BeGreaterThan 0
+            
+            foreach ($fileGroup in $config.files) {
+                $fileGroup.name | Should -Not -BeNullOrEmpty
+                $fileGroup.source | Should -Not -BeNullOrEmpty
+                $fileGroup.destination | Should -Not -BeNull  # Can be empty string
+            }
+        }
+        
+        It "Should validate semantic version format using regex" {
+            $validVersions = @("1.0.0", "2.1.3", "1.0.0-beta", "1.0.0+build.123")
+            $invalidVersions = @("1.0", "1.0.0.0", "v1.0.0", "1.0.0-", "")
+            
+            $semanticVersionPattern = "^\d+\.\d+\.\d+(-[a-zA-Z0-9.-]+)?(\+[a-zA-Z0-9.-]+)?$"
+            
+            foreach ($version in $validVersions) {
+                $version | Should -Match $semanticVersionPattern
+            }
+            
+            foreach ($version in $invalidVersions) {
+                $version | Should -Not -Match $semanticVersionPattern
+            }
+        }
+    }
+}
