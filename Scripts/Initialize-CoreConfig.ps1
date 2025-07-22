@@ -70,13 +70,13 @@ for ($i = 0; $i -lt $Script:CliArgs.Count; $i++) {
         $helpArg = $true
     } else {
         if ($Script:CliArgs[$i] -is [array]) {
-            $remainingArgs += @($Script:CliArgs[$i])
+            $remainingArgs += ,$Script:CliArgs[$i]
             #$remainingArgs += $(Format-ToString -Obj $Script:CliArgs[$i])
         } elseif ($Script:CliArgs[$i] -is [hashtable]) {
-            $remainingArgs += @($Script:CliArgs[$i])
+            $remainingArgs += ,$Script:CliArgs[$i]
             #$remainingArgs += $(Format-ToString -Obj $Script:CliArgs[$i])
         } elseif ($Script:CliArgs[$i] -is [object]) {
-            $remainingArgs += @($Script:CliArgs[$i])
+            $remainingArgs += ,$Script:CliArgs[$i]
             #$remainingArgs += $(Format-ToString -Obj $Script:CliArgs[$i])
         } else {
             $remainingArgs += $Script:CliArgs[$i]
