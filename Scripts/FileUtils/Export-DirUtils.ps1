@@ -71,11 +71,14 @@ function Export-CleanDir {
         [string]$EmailSubject = "",
         
         [switch]$Exec,
-        [switch]$NI
+        [switch]$NI,
+        [switch]$NoRecurse
     )
 
     $renExtStr = if( $RenameExts -and $RenameExts.Count -gt 0) { Format-ToString  -Obj $RenameExts } else { "" }
-    Log -Info ": -SourceDir $SourceDir -DestDir $DestDir -RenExt $renExtStr -Excludes $Excludes -Zip:$Zip -ZipFile $ZipFile -Email:$Email -EmailAddr $EmailAddr -EmailSubject $EmailSubject -Exec:$Exec"
+    $excludesStr = if ($Excludes -and $Excludes.Count -gt 0) { Format-ToString -Obj $Excluces } else { "" }
+
+    Log -Info ": -SourceDir $SourceDir -DestDir $DestDir -RenExt $renExtStr -Excludes $Excludes -Zip:$Zip -ZipFile $ZipFile -Email:$Email -EmailAddr $EmailAddr -EmailSubject $EmailSubject -Exec:$Exec -NoRecurse:$NoRecurse"
     if ($Exec) { Set-DryRun $false }
 
     if (-not (Test-Path $SourceDir)) {
@@ -104,7 +107,7 @@ function Export-CleanDir {
     }
 
     # Step 1: Read source structure as VirtualFolder hierarchy with SourcePath links
-    $rootSpecDir = Read-FolderHierarchy -FolderPath $SourceDir -ReadContents:$false
+    $rootSpecDir = Read-FolderHierarchy -FolderPath $SourceDir -ReadContents:$false -NoRecurse:$NoRecurse
 
     if (-not $rootSpecDir) {
         $msg = "Read-FolderHierarchy returned null when reading $SourceDir."
@@ -138,7 +141,7 @@ function Export-CleanDir {
     # Step 4: Write destination hierarchy
     # First make the top-level src directory under dest
     $action = [ItemActionType]::Copy
-    Write-FolderHierarchy -DestFolderPath $destRootDirPath -SrcVirtualFolder $rootSpecDir -ItemAction $action -Exec:$Exec
+    Write-FolderHierarchy -DestFolderPath $destRootDirPath -SrcVirtualFolder $rootSpecDir -ItemAction $action -Exec:$Exec -NoRecurse:$NoRecurse
 
     # Step 5: Optionally zip the destination
     if ($null -ne $ZipFile -and $ZipFile -ne "") {
@@ -149,7 +152,7 @@ function Export-CleanDir {
 
         # Compress directory into ZipFile
         Log -Info "Compress-Contents -SourcePaths $(Format-ToString -obj @($destRootDirPath)) -TargetDir `"$DestDir`" -NI:$NI -Exec:$Exec"
-        $ZipFilePath = Compress-Contents -SourcePaths @($destRootDirPath) -TargetDir "$DestDir" -NI:$NI -Exec:$Exec
+        $ZipFilePath = Compress-Contents -SourcePaths @($destRootDirPath) -TargetDir "$DestDir" -NI:$NI -Exec:$Exec -Recurse:(-not $NoRecurse)
         Log -Info "Zipped exported directory $destRootDirPath to $ZipFilePath"
     
         if ($ZipFilePath -and $Email) {
@@ -238,8 +241,12 @@ function Copy-CleanZipDir {
         [string]$EmailAddr = "",
         [string]$EmailSubject = "",
         [switch]$Exec,
-        [switch]$Interactive
+        [switch]$Interactive,
+        [switch]$NoRecurse
     )
+
+    Log -Info ": -SrcDir $SrcDir -DstDir $DstDir -RenameExtsList $(Format-ToString -Obj $RenameExtsList) -ExcludeList $(Format-ToString -Obj $ExcludeList) -Zip:$Zip -ZipFile $ZipFile -Email:$Email -EmailAddr $EmailAddr -EmailSubject $EmailSubject -Exec:$Exec -NoRecurse:$NoRecurse"
+
     if ($null -eq $DstDir -or $DstDir -eq "") {
         $DstDir = "$env:HOMEPATH\Downloads"
     }
@@ -248,6 +255,7 @@ function Copy-CleanZipDir {
     $argsList = @{
         SourceDir   = $SrcDir
         DestDir     = $DstDir
+        NoRecurse   = $NoRecurse
     }
 
     # Make ExcludeList empty to not have any Excludes
@@ -316,7 +324,7 @@ elseif ($MyInvocation.InvocationName -eq '.') {
 }
 elseif ($MyInvocation.MyCommand.Path -eq $PSCommandPath) {
     # Script is being executed directly
-    Log -Info "Copy-CleanZipDir ($remainingArgs))"
+    Log -Info "Copy-CleanZipDir $remainingArgs"
     Copy-CleanZipDir @remainingArgs
 }
 else {

@@ -91,7 +91,8 @@ function Compress-Contents {
 
         [string]$PW = "",
 
-        [switch]$Exec
+        [switch]$Exec,
+        [switch]$Recurse
     )
 
     If ($Exec) { Set-DryRun $false }
@@ -102,7 +103,7 @@ function Compress-Contents {
         if (Test-Path $path) {
             $expandedPaths += (Resolve-Path -Path $path).Path
         } else {
-            $expandedPaths += (Get-ChildItem -Path $path -File -Recurse | Select-Object -ExpandProperty FullName)
+            $expandedPaths += (Get-ChildItem -Path $path -File -Recurse:$Recurse | Select-Object -ExpandProperty FullName)
         }
     }
 

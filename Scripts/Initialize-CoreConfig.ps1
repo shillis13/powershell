@@ -69,7 +69,18 @@ for ($i = 0; $i -lt $Script:CliArgs.Count; $i++) {
     } elseif ($Script:CliArgs[$i] -match "-Help") {
         $helpArg = $true
     } else {
-        $remainingArgs += $Script:CliArgs[$i]
+        if ($Script:CliArgs[$i] -is [array]) {
+            $remainingArgs += @($Script:CliArgs[$i])
+            #$remainingArgs += $(Format-ToString -Obj $Script:CliArgs[$i])
+        } elseif ($Script:CliArgs[$i] -is [hashtable]) {
+            $remainingArgs += @($Script:CliArgs[$i])
+            #$remainingArgs += $(Format-ToString -Obj $Script:CliArgs[$i])
+        } elseif ($Script:CliArgs[$i] -is [object]) {
+            $remainingArgs += @($Script:CliArgs[$i])
+            #$remainingArgs += $(Format-ToString -Obj $Script:CliArgs[$i])
+        } else {
+            $remainingArgs += $Script:CliArgs[$i]
+        }
     }
 }
 #Write-Host "LogLevelArg = $logLevelArg  : execArg = $execArg   :   helpArg = $helpArg   : remainingArgs = " (Format-ToString($remainingArgs))

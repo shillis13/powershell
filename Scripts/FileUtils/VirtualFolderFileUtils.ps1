@@ -830,12 +830,13 @@ function Write-FolderHierarchy {
 
         [ItemActionType]$ItemAction = [ItemActionType]::Write,
 
-        [switch]$Exec
+        [switch]$Exec,
+        [switch]$NoRecurse
     )
     
     if ($Exec) { Set-DryRun $false }
 
-    Log -Dbg "Write-FolderHierarchy(): -DestFolderPath $DestFolderPath -SrcVirtualFolder $($SrcVirtualFolder.Name()) -ItemAction $itemAction -Exec=$Exec"
+    Log -Dbg "Write-FolderHierarchy(): -DestFolderPath $DestFolderPath -SrcVirtualFolder $($SrcVirtualFolder.Name()) -ItemAction $itemAction -Exec=$Exec -NoRecurse=$NoRecurse"
 
     $targetFolderPath = Resolve-ToAbsPath $DestFolderPath
 
@@ -886,19 +887,21 @@ function Write-FolderHierarchy {
         }
     }
 
-    # Recurse into SubFolderectories
-    foreach ($childFolder in $SrcVirtualFolder.SubFolders) {
-        $childDirPath = Join-Path $targetFolderPath $childFolder.Name()
-        if (-not (Test-Path -Path $childDirPath -PathType Container)) {
-            if (-not (Get-DryRun)) {
-                New-Item -Path $childDirPath -ItemType Directory -Force | Out-Null
+    if (-not $NoRecurse) {
+        # Recurse into SubFolderectories
+        foreach ($childFolder in $SrcVirtualFolder.SubFolders) {
+            $childDirPath = Join-Path $targetFolderPath $childFolder.Name()
+            if (-not (Test-Path -Path $childDirPath -PathType Container)) {
+                if (-not (Get-DryRun)) {
+                    New-Item -Path $childDirPath -ItemType Directory -Force | Out-Null
+                }
+                else {
+                    Log -DryRun "Create Folder: $childDirPath"               
+                }
             }
-            else {
-                Log -DryRun "Create Folder: $childDirPath"               
-            }
-        }
 
-        Write-FolderHierarchy -DestFolderPath $childDirPath -SrcVirtualFolder $childFolder -ItemAction $itemAction -Exec:$Exec
+            Write-FolderHierarchy -DestFolderPath $childDirPath -SrcVirtualFolder $childFolder -ItemAction $itemAction -Exec:$Exec -NoRecurse:$NoRecurse
+        }
     }
 }
 #endregion
@@ -934,7 +937,8 @@ function Read-FolderHierarchy {
         [Parameter(Mandatory)]
         [string]$FolderPath,
 
-        [switch]$ReadContents
+        [switch]$ReadContents,
+        [switch]$NoRecurse
     )
 
     $normalizedRoot = Format-Path $FolderPath
@@ -966,11 +970,13 @@ function Read-FolderHierarchy {
         $virtFolder.AddItem($vi)
     }
 
-    foreach ($sub in Get-ChildItem -Path $normalizedRoot -Directory) {
-        $subPath = Resolve-ToAbsPath $sub.FullName
-        $childFolder = Read-FolderHierarchy -FolderPath $subPath -ReadContents:$ReadContents
-        #$childFolder.ParentFolder = $virtFolder
-        $virtFolder.AddSubFolder($childFolder)
+    if (-not $NoRecurse) {
+        foreach ($sub in Get-ChildItem -Path $normalizedRoot -Directory) {
+            $subPath = Resolve-ToAbsPath $sub.FullName
+            $childFolder = Read-FolderHierarchy -FolderPath $subPath -ReadContents:$ReadContents -NoRecurse:$NoRecurse
+            #$childFolder.ParentFolder = $virtFolder
+            $virtFolder.AddSubFolder($childFolder)
+        }
     }
 
     return $virtFolder
