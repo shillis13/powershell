@@ -31,6 +31,7 @@ $test08 = "$Script:PSRoot\Scripts\Tests\Test-GetOutlookItemType.Tests.ps1"
 $test09 = "$Script:PSRoot\Scripts\Tests\Test-DateTimeUtils.Tests.ps1"
 $test10 = "$Script:PSRoot\Scripts\Tests\Test-Logging.Tests.ps1"
 $test11 = "$Script:PSRoot\Scripts\Tests\Test-SelectFiles.Tests.ps1"
+$test12 = "$Script:PSRoot\Scripts\Tests\Test-Packager.Tests.ps1"
 
 
 # Optional breakpoints
@@ -40,7 +41,7 @@ $test11 = "$Script:PSRoot\Scripts\Tests\Test-SelectFiles.Tests.ps1"
 #Set-PSBreakpoint -Command '&'
 
 $conf = [PesterConfiguration]::Default
-$conf.Run.Path = @($test01, $test02, $test03, $test04, $test05, $test06, $test07, $test08, $test09, $test10, $test11)
+$conf.Run.Path = @($test01, $test02, $test03, $test04, $test05, $test06, $test07, $test08, $test09, $test10, $test11, $test12)
 #$conf.Run.Path = @($test01, $test02, $test03, $test04, $test05, $test06)
 
 $conf.Output.Verbosity = 'Detailed'
